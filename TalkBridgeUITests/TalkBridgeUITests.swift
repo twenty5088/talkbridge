@@ -192,6 +192,8 @@ final class TalkBridgeUITests: XCTestCase {
         XCTAssertEqual(recovery.label, "再試一次")
         waitForStatus(app, "發生錯誤")
         recovery.tap()
+        // v2 P7：再試一次用同一句重新翻譯（不用重講），成功後照常播放再回到待機。
+        waitForStatus(app, "正在播放")
         waitForStatus(app, "等待中")
     }
 

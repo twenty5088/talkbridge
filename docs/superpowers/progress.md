@@ -5,7 +5,7 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T19:46:57+08:00
+- last_active: 2026-11-07T20:04:28+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: v2 計畫 Task 7：R1–R8 已修、core 綠；接著 ios CI、下載 ipa、更新 final-report、status DONE
 - blocked_reason: （無）
@@ -93,3 +93,5 @@
 - Final(v2): Ruling: 殘響門檻 0.8→0.9、只比對播完 1.5 秒內開始的話、少於 4 個字母／數字不比對；舊測試 testDefaultThreshold 改成 0.9 — 審查 R4：寧可漏丟殘響也不可丟對方真的回答 — 若錯：喇叭殘響偶爾被翻回中文（實機測試 28 項會看到）。
 - Final(v2): Ruling: 沒有語音時（voiceMatch none）照樣接下一句；但待播句（外語沒語音）停在待播並清掉記住的下一句 — 待播句要留給對方看畫面 — 若錯：按了下一句卻要再按一次。
 - Final(v2): Ruling: 待機時（準備中或保護間隔內）進背景／來電／換語言改為 stopAll（不顯示錯誤畫面）— 沒有正在進行的一句，不需要錯誤畫面 — 若錯：無。
+- Final(v2): ios #53：Core 166/166、UI 14/15、warnings 0。失敗 testErrorStateHasRecoveryButton：根因是 P7 之後「再試一次」會用同一句重翻，而假情境 translationFailure 每次都失敗→又回到「發生錯誤」。
+- Final(v2): Ruling: 假翻譯加 translateErrorOnce，translationFailure 情境只失敗第一次；UI 測試改成驗證重試後「正在播放」→「等待中」（比原本只看等待中更嚴格）— 行為改變是 P7 本意 — 若錯：無。

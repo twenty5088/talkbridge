@@ -23,7 +23,8 @@ public enum FakeScenario: String, CaseIterable, Sendable {
         let translation = FakeTranslationService(
             log: log,
             readiness: self == .languageNotReady ? .needsDownload : .installed,
-            translateError: self == .translationFailure ? AppError.translationFailed : nil)
+            translateError: self == .translationFailure ? AppError.translationFailed : nil,
+            translateErrorOnce: true)   // 「再試一次」會用同一句重翻（v2 P7），第二次要成功
         let synthesis = FakeSpeechSynthesisService(log: log, autoCompleteAfter: .seconds(4), sleeper: sleeper)
         let bluetooth = AudioRouteInfo(kind: .bluetooth, portName: "Sample Buds")
         let audio = self == .speakerOverrideFails

@@ -228,6 +228,18 @@ final class ReviewFixV2Tests: XCTestCase {
         XCTAssertFalse(h.vm.keepsScreenAwake)
     }
 
+    // MARK: UI 測試假情境：翻譯只失敗一次
+
+    func testTranslationFailureScenarioRetrySucceeds() async {
+        let services = FakeScenario.translationFailure.makeServices(sleeper: ManualSleeper())
+        do {
+            _ = try await services.translation.translate("Hi there", source: "en", target: "zh-Hant-TW")
+            XCTFail("第一次要失敗")
+        } catch {}
+        let second = try? await services.translation.translate("Hi there", source: "en", target: "zh-Hant-TW")
+        XCTAssertEqual(second, "[zh-Hant-TW] Hi there")
+    }
+
     // MARK: R8 等使用者按播放時的提示
 
     func testHintWhileWaitingForUserToPlay() async {

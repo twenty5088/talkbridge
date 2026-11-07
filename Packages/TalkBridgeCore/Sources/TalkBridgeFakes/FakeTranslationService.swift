@@ -9,6 +9,7 @@ public final class FakeTranslationService: TranslationService, Sendable {
         var prepareError: (any Error & Sendable)?
         var translateError: (any Error & Sendable)?
         var holdTranslations: Bool
+        var translateErrorOnce: Bool
         var held: [CheckedContinuation<Void, Never>] = []
     }
 
@@ -17,10 +18,11 @@ public final class FakeTranslationService: TranslationService, Sendable {
 
     public init(log: CallLog, readiness: TranslationReadiness = .installed,
                 prepareError: (any Error & Sendable)? = nil, translateError: (any Error & Sendable)? = nil,
-                holdTranslations: Bool = false) {
+                holdTranslations: Bool = false, translateErrorOnce: Bool = false) {
         self.log = log
         self.state = Mutex(State(readiness: readiness, prepareError: prepareError,
-                                 translateError: translateError, holdTranslations: holdTranslations))
+                                 translateError: translateError, holdTranslations: holdTranslations,
+                                 translateErrorOnce: translateErrorOnce))
     }
 
     public func setTranslateError(_ error: (any Error & Sendable)?) { state.withLock { $0.translateError = error } }
@@ -60,7 +62,13 @@ public final class FakeTranslationService: TranslationService, Sendable {
             }
             if resumeNow { continuation.resume() }
         }
-        if let error = state.withLock({ $0.translateError }) { throw error }
+        // translateErrorOnce：只有第一次失敗（UI 測試「再試一次」要能成功）。
+        let error = state.withLock { s -> (any Error & Sendable)? in
+            let error = s.translateError
+            if s.translateErrorOnce { s.translateError = nil }
+            return error
+        }
+        if let error { throw error }
         return "[\(target)] \(text)"
     }
 }

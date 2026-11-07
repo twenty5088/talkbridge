@@ -4,7 +4,7 @@ import XCTest
 final class ConversationConfigurationTests: XCTestCase {
     func testDefaultConfiguration() {
         let c = ConversationConfiguration.standard
-        XCTAssertEqual(c.silenceTimeout, .milliseconds(1200))
+        XCTAssertNil(c.silenceTimeout, "nil＝依使用者設定的停頓秒數")
         XCTAssertEqual(c.maxUtteranceDuration, .seconds(30))
         XCTAssertEqual(c.playbackCountdown, 2)
         XCTAssertEqual(c.postPlaybackMicGuard, .milliseconds(300))

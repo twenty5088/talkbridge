@@ -5,8 +5,8 @@ final class UtteranceEndDetectorTests: XCTestCase {
     private let detector = UtteranceEndDetector(configuration: .standard)
 
     func testSilenceAfterSpeechEnds() {
-        XCTAssertEqual(detector.evaluate(elapsed: .seconds(3), sinceLastPartial: .milliseconds(1190)), .keepListening)
-        XCTAssertEqual(detector.evaluate(elapsed: .seconds(3), sinceLastPartial: .milliseconds(1200)), .endBySilence)
+        XCTAssertEqual(detector.evaluate(elapsed: .seconds(3), sinceLastPartial: .milliseconds(1990)), .keepListening)
+        XCTAssertEqual(detector.evaluate(elapsed: .seconds(3), sinceLastPartial: .milliseconds(2000)), .endBySilence)
     }
 
     func testMaxDuration() {

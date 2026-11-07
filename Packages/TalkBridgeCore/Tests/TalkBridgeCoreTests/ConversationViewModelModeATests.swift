@@ -9,7 +9,7 @@ final class ConversationViewModelModeATests: XCTestCase {
         h.vm.partnerButtonTapped()
         await waitUntil("partial") { h.vm.state == .listeningToPartner && h.vm.partialTranscript == "Where is the station" }
         await h.sleeper.waitForPendingCount(1)
-        h.sleeper.advance(by: .milliseconds(1200))
+        h.sleeper.advance(by: .milliseconds(2000))
         await waitUntil("speaking") { h.vm.state == .speakingChinese && h.synthesis.isSpeaking }
         h.synthesis.completeCurrent()
         await waitUntil("idle") { h.vm.state == .idle }
@@ -30,7 +30,7 @@ final class ConversationViewModelModeATests: XCTestCase {
         h.vm.partnerButtonTapped()
         await waitUntil("partial") { h.vm.partialTranscript == "Where is the station" }
         await h.sleeper.waitForPendingCount(1)
-        h.sleeper.advance(by: .milliseconds(1100))
+        h.sleeper.advance(by: .milliseconds(1900))
         for _ in 0..<1000 { await Task.yield() }
         XCTAssertEqual(h.vm.state, .listeningToPartner)
         XCTAssertEqual(h.log.count(of: "recognition.finishAudio"), 0)
@@ -41,15 +41,15 @@ final class ConversationViewModelModeATests: XCTestCase {
         h.vm.partnerButtonTapped()
         await waitUntil("partial") { h.vm.partialTranscript == "Where is the station" }
         await h.sleeper.waitForPendingCount(1)
-        h.sleeper.advance(by: .milliseconds(1000))
+        h.sleeper.advance(by: .milliseconds(1500))
         h.recognition.emit(.partial("Where is the station please"))
         await waitUntil("new partial") { h.vm.partialTranscript == "Where is the station please" }
         await h.sleeper.waitForPendingCount(1)
-        h.sleeper.advance(by: .milliseconds(1000))   // 距最新結果只有 1.0 秒
+        h.sleeper.advance(by: .milliseconds(1500))   // 距最新結果只有 1.5 秒
         for _ in 0..<1000 { await Task.yield() }
         XCTAssertEqual(h.vm.state, .listeningToPartner)
         await h.sleeper.waitForPendingCount(1)
-        h.sleeper.advance(by: .milliseconds(200))
+        h.sleeper.advance(by: .milliseconds(500))
         await waitUntil("transcribing or later") { h.vm.state != .listeningToPartner }
         XCTAssertEqual(h.log.count(of: "recognition.finishAudio"), 1)
     }

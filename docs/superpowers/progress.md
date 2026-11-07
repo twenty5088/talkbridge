@@ -78,3 +78,4 @@
 - Ruling: ConversationConfiguration.silenceTimeout 改為 Duration?，nil＝依使用者設定；只有 UI 測試假情境固定 0.3 秒 — 讓 UI 測試維持快速 — 若錯：假情境不反映使用者設定，只影響測試。
 - Ruling: AppSettings 自訂 init(from:) 用 decodeIfPresent — 舊版存下的設定少了新欄位時不會整份被重置 — 若錯：升級後設定被重置。
 - 停頓設定驗證：ios #37（commit 5abbb3f）Core 119/119、UI 14/14（新增 testPauseSettingDefaultsToTwoSecondsAndCanChange）、warnings 0、ipa v37 下載到 dist/。
+- 2026-11-07 v2：設計 specs/2026-11-07-auto-language-design.md（Kevin 選先做實測版、伺服器語言照樣判斷）。拋棄式實驗 TalkBridge/Experiments/（設定→語言判斷測試），等 Kevin 實機結果再寫計畫。

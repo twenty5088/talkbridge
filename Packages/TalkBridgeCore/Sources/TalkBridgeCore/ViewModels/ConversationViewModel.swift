@@ -22,7 +22,12 @@ public final class ConversationViewModel {
     /// 自動輪流時現在輪到誰。
     public private(set) var currentTurn: Speaker?
     public private(set) var lastError: AppError?
-    public var partnerLanguage: PartnerLanguage = .english
+    /// 換語言時若正在進行中，先全部停止，避免用舊語言翻譯或播放。
+    public var partnerLanguage: PartnerLanguage = .english {
+        didSet {
+            if oldValue != partnerLanguage, state.isBusy { stopAll() }
+        }
+    }
     public var settings: AppSettings
     /// 模式 B 倒數剩餘秒數；nil 表示沒有在倒數。
     public private(set) var countdownRemaining: Int?
@@ -122,6 +127,46 @@ public final class ConversationViewModel {
         activeTask = Task { [weak self] in
             await self?.speak(entry.translation, direction: entry.direction, as: speakingState)
         }
+    }
+
+    // MARK: 系統事件
+
+    /// 持續接收音訊事件（耳機插拔、來電中斷…）。畫面在 .task 裡呼叫。
+    public func startObservingAudioEvents() async {
+        for await event in audio.events {
+            handleAudioEvent(event)
+        }
+    }
+
+    public func handleAudioEvent(_ event: AudioSessionEvent) {
+        switch event {
+        case .routeChanged(let newRoute, let oldDeviceUnavailable):
+            route = newRoute
+            // 耳機斷線時正在播放：立刻停，避免中文突然從手機喇叭大聲播出。
+            if oldDeviceUnavailable, state.isSpeaking || state.isMicrophoneActive {
+                stopWithError(.headsetDisconnected)
+            }
+        case .interruptionBegan:
+            if state.isBusy { stopWithError(.audioInterrupted) }
+        case .interruptionEnded:
+            break   // 不自動恢復；使用者再按一次開始。
+        case .mediaServicesReset:
+            if state.isBusy { stopWithError(.audioSessionFailed) } else { stopAll() }
+        }
+    }
+
+    /// App 進入背景：安全停止所有工作（不在背景錄音）。
+    public func appDidEnterBackground() {
+        if state.isBusy {
+            stopWithError(.appBackgrounded)
+        }
+    }
+
+    private func stopWithError(_ error: AppError) {
+        stopAll()
+        logger("stopped: \(error.category)")
+        lastError = error
+        move(to: .error(error))
     }
 
     // MARK: 模式 B 待播操作

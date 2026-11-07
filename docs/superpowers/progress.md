@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T09:17:20+08:00
+- last_active: 2026-11-07T09:29:39+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: Task 8 Step 1（寫測試）
+- current: Task 8 Step 2（RED）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -48,3 +48,4 @@
 - Ruling: 狀態機加 idle→speakingChinese、idle→speakingPartnerLanguage（重播）— 重播只播放不開麥克風 — 若錯：多兩條轉換。
 - Ruling: ios.yml 加 concurrency cancel-in-progress — 每次推送都觸發 macOS，排隊會拖慢驗證 — 若錯：中間版本不會有 iOS 結果（Linux 仍每版都有）。
 - Task 7: complete（commit 73cf31b；core-tests #16 57/57 pass）。模式 B 在 Task 7 先停在 readyToPlay(nil)，Task 8 補完。
+- Task 7 iOS 驗證：ios #16 Core 57/57、UI 1/1、warnings 0

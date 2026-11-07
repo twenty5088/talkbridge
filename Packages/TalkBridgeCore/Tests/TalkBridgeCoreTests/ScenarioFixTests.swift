@@ -23,6 +23,13 @@ final class ScenarioFixTests: XCTestCase {
         await waitUntil("idle") { h.vm.state == .idle }
     }
 
+    /// 聽到部分結果後停頓 2 秒（預設停頓），讓這句結束。
+    private func endUtteranceBySilence(_ h: Harness, partial: String) async {
+        await waitUntil("partial \(partial)") { h.vm.state.isMicrophoneActive && h.vm.partialTranscript == partial }
+        await h.sleeper.waitForPendingCount(1)
+        h.sleeper.advance(by: .seconds(2))
+    }
+
     private func passMicGuard(_ h: Harness) async {
         await h.sleeper.waitForPendingCount(1)
         h.sleeper.advance(by: .milliseconds(300))
@@ -47,8 +54,9 @@ final class ScenarioFixTests: XCTestCase {
     // MARK: P4 自動輪流忽略空白結果
 
     func testAutoModeIgnoresEmptyTranscriptAndKeepsListening() async {
-        let h = Harness(scriptsByLocale: ["en-US": [.final("。")]], settings: settings(.autoAlternate))
+        let h = Harness(scriptsByLocale: ["en-US": [.partial("。"), .final("。")]], settings: settings(.autoAlternate))
         h.vm.partnerButtonTapped()
+        await endUtteranceBySilence(h, partial: "。")
         await waitUntil("first listen done") { h.log.count(of: "recognition.start(en-US)") == 1 && h.vm.state == .idle }
         XCTAssertNil(h.vm.notice, "自動輪流不顯示「沒有聽到內容」")
         XCTAssertEqual(h.vm.currentTurn, .partner, "自動輪流沒有停")
@@ -58,8 +66,9 @@ final class ScenarioFixTests: XCTestCase {
     }
 
     func testManualModeEmptyTranscriptStillShowsNotice() async {
-        let h = Harness(scriptsByLocale: ["en-US": [.final("。")]])
+        let h = Harness(scriptsByLocale: ["en-US": [.partial("。"), .final("。")]])
         h.vm.partnerButtonTapped()
+        await endUtteranceBySilence(h, partial: "。")
         await waitUntil("idle with notice") { h.vm.state == .idle && h.vm.notice != nil }
         XCTAssertEqual(h.vm.notice, "沒有聽到內容，請再說一次。")
         h.sleeper.advance(by: .seconds(1))
@@ -170,6 +179,7 @@ final class ScenarioFixTests: XCTestCase {
                         settings: settings(.autoAlternate))
         await finishUserTurn(h)
         await passMicGuard(h)
+        await endUtteranceBySilence(h, partial: echo)
         await waitUntil("first partner listen done") {
             h.log.count(of: "recognition.start(en-US)") == 1 && h.vm.state == .idle
         }
@@ -177,6 +187,7 @@ final class ScenarioFixTests: XCTestCase {
         XCTAssertEqual(h.vm.currentTurn, .partner)
         // 只檢查播放後的第一句：之後同樣的話照常翻譯。
         await passMicGuard(h)
+        await endUtteranceBySilence(h, partial: echo)
         await waitUntil("second listen translated") { h.log.count(of: "translation.translate(en->zh-Hant-TW)") == 1 }
     }
 
@@ -185,6 +196,7 @@ final class ScenarioFixTests: XCTestCase {
                         settings: settings(.autoAlternate))
         await finishUserTurn(h)
         await passMicGuard(h)
+        await endUtteranceBySilence(h, partial: "It is over there")
         await waitUntil("translated") { h.log.count(of: "translation.translate(en->zh-Hant-TW)") == 1 }
     }
 

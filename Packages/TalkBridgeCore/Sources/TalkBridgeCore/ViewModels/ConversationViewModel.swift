@@ -83,6 +83,8 @@ public final class ConversationViewModel {
     private struct ListeningContext {
         let id: Int
         let start: Duration
+        /// 第一次聽到文字的時間；單句最長時間從這裡算。
+        var firstChange: Duration?
         var lastChange: Duration?
         var lastPartial = ""
         var finalText: String?
@@ -502,7 +504,7 @@ public final class ConversationViewModel {
             }
             if context.endRequested || context.streamEnded || context.finalText != nil { break monitor }
             let current = sleeper.now
-            switch detector.evaluate(elapsed: current - context.start,
+            switch detector.evaluate(elapsed: current - (context.firstChange ?? context.start),
                                      sinceLastPartial: context.lastChange.map { current - $0 }) {
             case .keepListening:
                 break
@@ -559,11 +561,11 @@ public final class ConversationViewModel {
     }
 
     private func nextDeadline(for context: ListeningContext, detector: UtteranceEndDetector) -> Duration {
-        let maxDeadline = context.start + configuration.maxUtteranceDuration
         if let lastChange = context.lastChange {
+            let maxDeadline = (context.firstChange ?? context.start) + configuration.maxUtteranceDuration
             return min(maxDeadline, lastChange + detector.silenceTimeout)
         }
-        return min(maxDeadline, context.start + detector.noSpeechTimeout)
+        return context.start + detector.noSpeechTimeout
     }
 
     private func handle(_ update: RecognitionUpdate, listenID: Int) {
@@ -573,6 +575,7 @@ public final class ConversationViewModel {
             guard text != context.lastPartial else { return }
             context.lastPartial = text
             context.lastChange = sleeper.now
+            if context.firstChange == nil { context.firstChange = context.lastChange }
             partialTranscript = text
         case .final(let text):
             context.finalText = text

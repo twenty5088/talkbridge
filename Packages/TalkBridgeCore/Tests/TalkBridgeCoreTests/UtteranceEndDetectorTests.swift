@@ -14,6 +14,12 @@ final class UtteranceEndDetectorTests: XCTestCase {
         XCTAssertEqual(detector.evaluate(elapsed: .seconds(30), sinceLastPartial: .zero), .endByMaxDuration)
     }
 
+    func testMaxDurationOnlyCountsAfterSpeechStarts() {
+        let detector = UtteranceEndDetector(configuration: .standard, noSpeechTimeout: .seconds(60))
+        XCTAssertEqual(detector.evaluate(elapsed: .seconds(45), sinceLastPartial: nil), .keepListening)
+        XCTAssertEqual(detector.evaluate(elapsed: .seconds(60), sinceLastPartial: nil), .endByNoSpeech)
+    }
+
     func testNoSpeechTimeout() {
         XCTAssertEqual(detector.evaluate(elapsed: .seconds(14), sinceLastPartial: nil), .keepListening)
         XCTAssertEqual(detector.evaluate(elapsed: .seconds(15), sinceLastPartial: nil), .endByNoSpeech)

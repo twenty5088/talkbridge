@@ -5,7 +5,7 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T16:47:45+08:00
+- last_active: 2026-11-07T16:51:41+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: v2 計畫 docs/superpowers/plans/2026-11-07-v2-next-speaker.md Task 1（設計 specs/2026-11-07-auto-language-design.md 按鈕版）
 - blocked_reason: （無）
@@ -83,3 +83,4 @@
 - Task 1: Ruling: 改寫 testNoMicWhileSpeakingPartnerLanguage（播放中按鈕原本＝停止，v2 改為記住下一句；仍驗證播放中不開麥克風）與 testSecondTranslationCancelsFirst→testTapOtherSideWhileTranslatingFinishesFirstThenSwitches（翻譯中按另一方原本＝取消，v2 改為翻完播完再換）— 設計 §2.1 表格 — 若錯：Kevin 想要的是立即中斷。
 - Task 1: Ruling: 待播且沒有倒數（先確認再播／取消倒數／停止播放／沒有語音）時按按鈕＝照舊立刻開始新的一輪，不記住 — 否則沒有語音時會卡在待播、按什麼都只是記住 — 若錯：先確認再播模式下按我說中文會丟掉待播句（原本就是這樣）。
 - Task 2: Ruling: testAutoIdleTimeoutStops 改推進 60 秒 — 設計 P6 自動輪流沒聲音暫停改 60 秒 — 若錯：Kevin 想維持 15 秒。
+- Task 2: Ruling: 單句最長 30 秒改成從第一次聽到文字起算、且沒人說話時不適用 — 否則自動輪流安靜等待會在 30 秒被誤判成「已達單句最長」— 若錯：對方講超過 30 秒時切段時機略晚。（測試 testMaxDurationOnlyCountsAfterSpeechStarts）

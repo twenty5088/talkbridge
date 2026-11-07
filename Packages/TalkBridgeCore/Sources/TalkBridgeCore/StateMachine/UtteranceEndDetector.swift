@@ -27,10 +27,11 @@ public struct UtteranceEndDetector: Sendable {
     ///   - elapsed: 從開始聆聽算起的時間。
     ///   - sinceLastPartial: 距離最後一次「文字有變」的部分結果；還沒有任何結果時為 nil。
     public func evaluate(elapsed: Duration, sinceLastPartial: Duration?) -> Decision {
-        if elapsed >= configuration.maxUtteranceDuration {
-            return .endByMaxDuration
-        }
         if let sinceLastPartial {
+            // 單句最長時間只在有人開始說話後才算（自動輪流可以安靜等 60 秒，不能先被 30 秒切掉）。
+            if elapsed >= configuration.maxUtteranceDuration {
+                return .endByMaxDuration
+            }
             return sinceLastPartial >= silenceTimeout ? .endBySilence : .keepListening
         }
         return elapsed >= noSpeechTimeout ? .endByNoSpeech : .keepListening

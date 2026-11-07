@@ -5,16 +5,16 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T08:58:15+08:00
+- last_active: 2026-11-07T08:59:26+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: Task 3 Step 2（RED）
+- current: Task 4 Step 2（RED）
 - blocked_reason: （無）
 
 ## 任務清單
 
 - [x] Task 1: Repo、CI 骨架與最小可編譯 App
 - [x] Task 2: 語言、方向、對照與設定值
-- [ ] Task 3: 錯誤對照與音訊路由對照
+- [x] Task 3: 錯誤對照與音訊路由對照
 - [ ] Task 4: Service protocols、Sleeper 與假服務
 - [ ] Task 5: 狀態機
 - [ ] Task 6: 一句話結束偵測
@@ -37,3 +37,5 @@
 - Ruling: Task 3 的 AudioOutputKind 多加 isHeadset（airPods/bluetooth/headphones）— Task 8「目前路由是耳機才切喇叭」需要 — 若錯：多一個屬性。
 - Task 1: complete（commits 0b45add..4d97abd；core-tests #3 1/1 pass；ios #2：Core 1/1、UI 1/1 pass、warnings 0、ipa 產出）
 - Task 2: complete（commits 6ca3b47..c3ea250；core-tests #5 9/9 pass）
+- Task 3: complete（commits 3c1…；core-tests 17/17 pass）。Core 不 import Foundation：Linux 上字串方法要用純 Swift。
+- Ruling: CallLog 由 actor 改成 Mutex 保護的 final class、同步 record — actor 的非同步記錄會讓呼叫順序不確定，測不了「服務呼叫順序」— 若錯：無。

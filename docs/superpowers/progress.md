@@ -5,15 +5,15 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T08:54:05+08:00
+- last_active: 2026-11-07T08:55:31+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: Task 2 Step 2（RED）
+- current: Task 3 Step 2（RED）
 - blocked_reason: （無）
 
 ## 任務清單
 
 - [x] Task 1: Repo、CI 骨架與最小可編譯 App
-- [ ] Task 2: 語言、方向、對照與設定值
+- [x] Task 2: 語言、方向、對照與設定值
 - [ ] Task 3: 錯誤對照與音訊路由對照
 - [ ] Task 4: Service protocols、Sleeper 與假服務
 - [ ] Task 5: 狀態機
@@ -36,3 +36,4 @@
 - Ruling: iOS runner 用 macos-15 + 自動選最新 Xcode（實測 Xcode 26.3、Swift 6.2.4、模擬器 iOS 26.2）— macos-26 標籤不確定存在 — 若錯：改 runs-on 一行。
 - Ruling: Task 3 的 AudioOutputKind 多加 isHeadset（airPods/bluetooth/headphones）— Task 8「目前路由是耳機才切喇叭」需要 — 若錯：多一個屬性。
 - Task 1: complete（commits 0b45add..4d97abd；core-tests #3 1/1 pass；ios #2：Core 1/1、UI 1/1 pass、warnings 0、ipa 產出）
+- Task 2: complete（commits 6ca3b47..c3ea250；core-tests #5 9/9 pass）

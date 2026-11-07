@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T11:04:43+08:00
+- last_active: 2026-11-07T11:16:56+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: 整體審查修正（RED）
+- current: 最終確認（重新觸發 ios、下載 ipa、寫 final-report）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -23,10 +23,10 @@
 - [x] Task 9: 並發、權限、語言準備、中斷
 - [x] Task 10: 自動輪流
 - [x] Task 11: Apple 框架實作
-- [ ] Task 12: SwiftUI 介面
-- [ ] Task 13: UI 測試
-- [ ] Task 14: 文件、最終乾淨建置、下載 ipa
-- [ ] 整體審查（superpowers:requesting-code-review），修完再跑一次 CI 全綠
+- [x] Task 12: SwiftUI 介面
+- [x] Task 13: UI 測試
+- [x] Task 14: 文件、最終乾淨建置、下載 ipa
+- [x] 整體審查（superpowers:requesting-code-review），修完再跑一次 CI 全綠
 
 ## 紀錄（新的在下面）
 
@@ -72,3 +72,4 @@
 - Final: fixed #2（ViewModel 端）翻譯 20 秒逾時＋取消即放棄 — testTranslationTimeoutShowsRetry RED→GREEN，suite 110/110
 - Final: Ruling: #1 辨識回呼換代、#3 translation session 只處理自己語言對的工作、#4 保留 SFSpeechRecognizer、#2（翻譯服務端）取消時移除佇列工作 — 都在 Apple 框架實作裡，模擬器無法執行真實 Speech/Translation，寫不出會失敗的自動測試；以 macOS 編譯＋0 警告驗證，並列入實機測試計畫（第 10、12 項）— 若錯：實機測試時才會發現。
 - Final: minor (deferred): #7 新一句開始時沒先 stopSpeaking；#8 utterance 用 ObjectIdentifier 比對可能撞位址（改用 ===）；#9 譯文清空時播放鈕仍可按；#10 回到待機沒有 deactivate 音訊（太太的音樂不會自動恢復）；#11 TalkBridgeFakes 也連結進 Release；#12 伺服器辨識的網路錯誤被顯示成「無法辨識這個語言」
+- Task 12/13/14 + 審查修正：ios #35（commit e3fa11d）Core 110/110、UI 13/13、warnings 0、ipa v35；core-tests #35 110/110。

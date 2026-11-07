@@ -173,8 +173,42 @@ UI 測試用 launch argument 切換假服務情境（只在 Debug 版有效）�
 
 ## 17. 實際執行過的 build／test 命令
 
-（由最終乾淨建置的 CI log 抄錄，見下一節的執行編號。）
+以下由 GitHub Actions 的實際 log 抄錄（每次都是全新的雲端環境，等同乾淨建置）。
+
+Linux（`core.yml`，容器 `swift:6.2`，Swift 6.2.4）：
+
+```bash
+swift --version
+swift test --package-path Packages/TalkBridgeCore
+```
+
+macOS（`ios.yml`，`macos-15`，Xcode 26.3 build 17C529，Swift 6.2.4，模擬器 iPhone 17 Pro／iOS 26.2）：
+
+```bash
+sudo xcode-select -s /Applications/Xcode_26.3.0.app/Contents/Developer
+xcodebuild -version && swift --version && xcodebuild -showsdks && xcrun simctl list devices available
+brew install xcodegen && xcodegen generate
+DEST=$(bash scripts/pick_simulator.sh)      # → platform=iOS Simulator,id=<iPhone 17 Pro 的 UDID>
+cd Packages/TalkBridgeCore && xcodebuild test -scheme TalkBridgeCore-Package -destination "$DEST" \
+  -derivedDataPath ../../DerivedData-core -resultBundlePath ../../CoreTests.xcresult
+xcodebuild test -project TalkBridge.xcodeproj -scheme TalkBridge -destination "$DEST" \
+  -derivedDataPath DerivedData -resultBundlePath UITests.xcresult
+xcrun xcresulttool get test-results summary --path UITests.xcresult --format json
+xcodebuild -project TalkBridge.xcodeproj -scheme TalkBridge -configuration Release -sdk iphoneos \
+  -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+```
 
 ## 18. 最終測試結果摘要
 
-（最終乾淨建置完成後填入。）
+最終驗證的程式版本：commit `e3fa11d`（2026-11-07）。
+
+| 項目 | 結果 |
+|---|---|
+| Linux 單元測試（core-tests #35） | 110 個，通過 110、失敗 0、略過 0 |
+| iOS 模擬器單元測試（ios #35） | 110 個，通過 110、失敗 0、略過 0 |
+| iOS UI 測試（ios #35） | 13 個，通過 13、失敗 0、略過 0 |
+| 本專案程式的編譯警告 | 0 |
+| App 建置（Debug 模擬器、Release iphoneos 未簽章） | 成功，產生 `TalkBridge-v35.ipa` |
+| 實機測試 | **尚未執行**，見 `docs/PhysicalDeviceTestPlan.md` |
+
+整體審查（另一個模型唯讀審查全部程式）：沒有 Critical；6 個 Important 已修正（能自動測的 3 項都先寫了會失敗的測試）；6 個 Minor 留到下一版，清單在 `docs/superpowers/progress.md`。

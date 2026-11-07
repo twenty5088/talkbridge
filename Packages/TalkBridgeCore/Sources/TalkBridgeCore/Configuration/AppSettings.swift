@@ -22,6 +22,29 @@ public struct AppSettings: Equatable, Sendable, Codable {
     public var continueListeningAfterPartner = false
     public var fontScale: Double = 1.0
     public var mode: ConversationMode = .manual
+    /// 說完停頓多久才開始翻譯（秒）。Kevin 2026-11-07：預設 2 秒，可在設定調整。
+    public var pauseSeconds: Double = 2.0
 
     public init() {}
+
+    public var pauseDuration: Duration {
+        .milliseconds(Int((pauseSeconds * 1000).rounded()))
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case outputPreference, confirmBeforePlay, continueListeningAfterPartner, fontScale, mode, pauseSeconds
+    }
+
+    /// 舊版存下的設定缺少新欄位時用預設值，不讓整份設定解碼失敗而被重置。
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = AppSettings()
+        outputPreference = try c.decodeIfPresent(OutputPreference.self, forKey: .outputPreference) ?? d.outputPreference
+        confirmBeforePlay = try c.decodeIfPresent(Bool.self, forKey: .confirmBeforePlay) ?? d.confirmBeforePlay
+        continueListeningAfterPartner = try c.decodeIfPresent(Bool.self, forKey: .continueListeningAfterPartner)
+            ?? d.continueListeningAfterPartner
+        fontScale = try c.decodeIfPresent(Double.self, forKey: .fontScale) ?? d.fontScale
+        mode = try c.decodeIfPresent(ConversationMode.self, forKey: .mode) ?? d.mode
+        pauseSeconds = try c.decodeIfPresent(Double.self, forKey: .pauseSeconds) ?? d.pauseSeconds
+    }
 }

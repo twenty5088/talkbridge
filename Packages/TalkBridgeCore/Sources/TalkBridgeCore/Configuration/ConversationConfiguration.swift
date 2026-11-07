@@ -1,7 +1,8 @@
 /// 對話流程的可調整數值，全部集中在這裡（原需求 §五 C-4）。
 public struct ConversationConfiguration: Sendable, Equatable {
-    /// 有說話後，停頓多久算一句話結束。
-    public var silenceTimeout: Duration = .milliseconds(1200)
+    /// 有說話後，停頓多久算一句話結束。nil＝依使用者設定（AppSettings.pauseSeconds）；
+    /// 只有 UI 測試的假情境會固定成較短的值。
+    public var silenceTimeout: Duration?
     /// 單句最長錄音時間，到了就先翻譯這一段。
     public var maxUtteranceDuration: Duration = .seconds(30)
     /// 模式 B 翻譯完成後自動播放前的倒數秒數。

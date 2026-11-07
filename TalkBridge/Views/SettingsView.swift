@@ -19,6 +19,19 @@ struct SettingsView: View {
                     Text("有藍牙耳機時，中文從耳機播給你聽；外語會暫時改從手機喇叭播給對方。若耳機切不過去，畫面會提示，可改用「給對方看」。收音一律使用 iPhone 的麥克風。")
                 }
 
+                Section {
+                    Picker("說完停頓多久才翻譯", selection: $settings.settings.pauseSeconds) {
+                        ForEach(SettingsViewModel.pauseOptions, id: \.self) { seconds in
+                            Text(Self.pauseText(seconds)).tag(seconds)
+                        }
+                    }
+                    .accessibilityIdentifier(AccessibilityID.pausePicker)
+                } header: {
+                    Text("聆聽")
+                } footer: {
+                    Text("說話停頓超過這個時間，就當作一句話說完、開始翻譯。常被切斷就調長一點；想馬上翻譯，可以再按一次按鈕。")
+                }
+
                 Section("播放給對方") {
                     Toggle("先確認再播放（不倒數）", isOn: $settings.settings.confirmBeforePlay)
                     Toggle("對方說完後繼續聆聽對方", isOn: $settings.settings.continueListeningAfterPartner)
@@ -61,6 +74,11 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private static func pauseText(_ seconds: Double) -> String {
+        let text = seconds == seconds.rounded() ? String(Int(seconds)) : String(seconds)
+        return seconds == AppSettings().pauseSeconds ? "\(text) 秒（預設）" : "\(text) 秒"
     }
 
     private static var versionText: String {

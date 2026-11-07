@@ -11,9 +11,12 @@ public struct UtteranceEndDetector: Sendable {
     }
 
     private let configuration: ConversationConfiguration
+    /// 實際使用的停頓秒數：設定檔有固定值就用它，否則用使用者設定。
+    public let silenceTimeout: Duration
 
-    public init(configuration: ConversationConfiguration) {
+    public init(configuration: ConversationConfiguration, userPause: Duration = AppSettings().pauseDuration) {
         self.configuration = configuration
+        self.silenceTimeout = configuration.silenceTimeout ?? userPause
     }
 
     /// - Parameters:
@@ -24,7 +27,7 @@ public struct UtteranceEndDetector: Sendable {
             return .endByMaxDuration
         }
         if let sinceLastPartial {
-            return sinceLastPartial >= configuration.silenceTimeout ? .endBySilence : .keepListening
+            return sinceLastPartial >= silenceTimeout ? .endBySilence : .keepListening
         }
         return elapsed >= configuration.autoTurnIdleTimeout ? .endByNoSpeech : .keepListening
     }

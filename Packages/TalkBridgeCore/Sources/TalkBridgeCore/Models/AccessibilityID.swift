@@ -27,6 +27,7 @@ public enum AccessibilityID {
     public static let closePartnerDisplayButton = "closePartnerDisplayButton"
     public static let settingsButton = "settingsButton"
     public static let settingsDoneButton = "settingsDoneButton"
+    public static let pausePicker = "pausePicker"
     public static let permissionView = "permissionView"
     public static let openSettingsButton = "openSettingsButton"
     public static let errorView = "errorView"

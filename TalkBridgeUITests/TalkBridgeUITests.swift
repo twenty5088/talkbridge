@@ -235,4 +235,23 @@ final class TalkBridgeUITests: XCTestCase {
         recovery.tap()
         waitForStatus(app, "等待中")
     }
+
+    // 「說完停頓多久才翻譯」：預設 2 秒，可改成其他秒數
+    @MainActor
+    func testPauseSettingDefaultsToTwoSecondsAndCanChange() {
+        let app = launch()
+        app.buttons[AccessibilityID.settingsButton].tap()
+        let picker = element(app, AccessibilityID.pausePicker)
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        let defaultText = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "2 秒（預設）")).firstMatch
+        XCTAssertTrue(defaultText.waitForExistence(timeout: 5), "預設要顯示 2 秒")
+        picker.tap()
+        let three = app.buttons["3 秒"].firstMatch
+        XCTAssertTrue(three.waitForExistence(timeout: 5))
+        three.tap()
+        let chosen = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "3 秒")).firstMatch
+        XCTAssertTrue(chosen.waitForExistence(timeout: 5), "選了 3 秒要顯示出來")
+    }
 }

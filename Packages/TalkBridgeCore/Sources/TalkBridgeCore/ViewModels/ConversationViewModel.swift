@@ -396,7 +396,7 @@ public final class ConversationViewModel {
         defer { consumer.cancel() }
 
         // 監看迴圈：停頓、最長時間、完全沒聲音、使用者再按一次。
-        let detector = UtteranceEndDetector(configuration: configuration)
+        let detector = UtteranceEndDetector(configuration: configuration, userPause: settings.pauseDuration)
         var reachedMaxDuration = false
         monitor: while true {
             if Task.isCancelled { return nil }
@@ -429,7 +429,7 @@ public final class ConversationViewModel {
                 finishTurn()
                 return nil
             }
-            await sleepUnlessWoken(for: nextDeadline(for: context) - current)
+            await sleepUnlessWoken(for: nextDeadline(for: context, silenceTimeout: detector.silenceTimeout) - current)
         }
 
         if reachedMaxDuration {
@@ -463,10 +463,10 @@ public final class ConversationViewModel {
         return context.lastPartial
     }
 
-    private func nextDeadline(for context: ListeningContext) -> Duration {
+    private func nextDeadline(for context: ListeningContext, silenceTimeout: Duration) -> Duration {
         let maxDeadline = context.start + configuration.maxUtteranceDuration
         if let lastChange = context.lastChange {
-            return min(maxDeadline, lastChange + configuration.silenceTimeout)
+            return min(maxDeadline, lastChange + silenceTimeout)
         }
         return min(maxDeadline, context.start + configuration.autoTurnIdleTimeout)
     }

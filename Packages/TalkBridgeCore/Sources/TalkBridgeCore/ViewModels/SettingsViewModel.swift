@@ -26,6 +26,8 @@ public final class InMemorySettingsStore: SettingsStore {
 @Observable
 public final class SettingsViewModel {
     public static let fontScaleOptions: [Double] = [0.85, 1.0, 1.2, 1.5]
+    /// 「說完停頓多久才翻譯」的選項（秒）。
+    public static let pauseOptions: [Double] = [1.2, 1.5, 2.0, 2.5, 3.0, 4.0]
 
     @ObservationIgnored private let store: any SettingsStore
 

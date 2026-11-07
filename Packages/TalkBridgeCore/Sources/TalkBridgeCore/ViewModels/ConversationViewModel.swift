@@ -22,10 +22,18 @@ public final class ConversationViewModel {
     /// 自動輪流時現在輪到誰。
     public private(set) var currentTurn: Speaker?
     public private(set) var lastError: AppError?
-    /// 換語言時若正在進行中，先全部停止，避免用舊語言翻譯或播放。
+    /// 換語言時若正在進行中，先全部停止，避免用舊語言翻譯或播放；
+    /// 也清掉「舊語言」的下載與錯誤，回到待機。
     public var partnerLanguage: PartnerLanguage = .english {
         didSet {
-            if oldValue != partnerLanguage, state.isBusy { stopAll() }
+            guard oldValue != partnerLanguage else { return }
+            pendingPreparePair = nil
+            if state.isBusy {
+                stopAll()
+            } else if state == .languageNotReady || state == .error(.languageUnsupported) {
+                lastError = nil
+                move(to: .idle)
+            }
         }
     }
     public var settings: AppSettings
@@ -143,8 +151,9 @@ public final class ConversationViewModel {
         switch event {
         case .routeChanged(let newRoute, let oldDeviceUnavailable):
             route = newRoute
-            // 耳機斷線時正在播放：立刻停，避免中文突然從手機喇叭大聲播出。
-            if oldDeviceUnavailable, state.isSpeaking || state.isMicrophoneActive {
+            // 耳機斷線時，若接下來（或正在）要把中文播給太太聽，立刻停，避免中文突然從手機喇叭大聲播出。
+            // 聆聽中不用停：收音一律用 iPhone 內建麥克風，不受耳機影響。
+            if oldDeviceUnavailable, Self.chinesePlaybackPending(in: state) {
                 stopWithError(.headsetDisconnected)
             }
         case .interruptionBegan:
@@ -153,6 +162,13 @@ public final class ConversationViewModel {
             break   // 不自動恢復；使用者再按一次開始。
         case .mediaServicesReset:
             if state.isBusy { stopWithError(.audioSessionFailed) } else { stopAll() }
+        }
+    }
+
+    private static func chinesePlaybackPending(in state: ConversationState) -> Bool {
+        switch state {
+        case .transcribingPartner, .translatingToChinese, .speakingChinese: true
+        default: false
         }
     }
 
@@ -335,7 +351,7 @@ public final class ConversationViewModel {
         move(to: speaker == .partner ? .translatingToChinese : .translatingToPartnerLanguage)
         let translated: String
         do {
-            translated = try await translation.translate(text, source: pair.source, target: pair.target)
+            translated = try await translateWithTimeout(text, source: pair.source, target: pair.target)
         } catch is CancellationError {
             return
         } catch {
@@ -484,6 +500,41 @@ public final class ConversationViewModel {
         context.endRequested = true
         listening = context
         wake()
+    }
+
+    /// 翻譯加上逾時：翻譯、逾時、被取消三者誰先到就用誰；其餘的工作一併取消。
+    private func translateWithTimeout(_ text: String, source: String, target: String) async throws -> String {
+        let translation = self.translation
+        let sleeper = self.sleeper
+        let timeout = configuration.translationTimeout
+        let gate = ResumeGate<String>()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+                gate.attach(continuation)
+                let work = Task {
+                    do {
+                        let result = try await translation.translate(text, source: source, target: target)
+                        gate.resume(with: .success(result))
+                    } catch {
+                        gate.resume(with: .failure(error))
+                    }
+                }
+                let timer = Task {
+                    do {
+                        try await sleeper.sleep(for: timeout)
+                        gate.resume(with: .failure(AppError.translationFailed))
+                    } catch {
+                        // 被取消：翻譯已經先完成或整個流程被停止。
+                    }
+                }
+                gate.onFinish {
+                    work.cancel()
+                    timer.cancel()
+                }
+            }
+        } onCancel: {
+            gate.resume(with: .failure(CancellationError()))
+        }
     }
 
     /// 倒數後自動播放；設定「先確認再播」時直接等使用者按播放。

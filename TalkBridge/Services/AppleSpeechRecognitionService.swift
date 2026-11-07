@@ -7,6 +7,7 @@ import TalkBridgeCore
 /// - 該語言支援裝置端辨識時一律 requiresOnDeviceRecognition；不支援時由 Apple 伺服器辨識（畫面會標示）。
 /// - finishAudio：移除音訊 tap、停引擎、endAudio，等最終結果。
 /// - cancel：同上並取消辨識工作，不送最終結果。
+/// - 每一輪有自己的 generation：上一輪被取消後晚到的回呼不會關掉新一輪的麥克風。
 /// - 不記錄任何辨識文字。
 ///
 /// 可變狀態都由 lock 保護，因此標成 @unchecked Sendable。
@@ -20,6 +21,9 @@ final class AppleSpeechRecognitionService: SpeechRecognitionService, @unchecked 
     }
 
     private let lock = NSLock()
+    private var generation = 0
+    /// 辨識器要在辨識期間保持存活（只放區域變數可能讓回呼失效）。
+    private var recognizer: SFSpeechRecognizer?
     private var engine: AVAudioEngine?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
@@ -62,6 +66,14 @@ final class AppleSpeechRecognitionService: SpeechRecognitionService, @unchecked 
             throw AppError.audioSessionFailed
         }
 
+        let myGeneration = lock.withLock { () -> Int in
+            generation += 1
+            self.recognizer = recognizer
+            self.engine = engine
+            self.request = request
+            return generation
+        }
+
         let (stream, continuation) = AsyncThrowingStream<RecognitionUpdate, Error>.makeStream()
         let task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             if let result {
@@ -69,51 +81,61 @@ final class AppleSpeechRecognitionService: SpeechRecognitionService, @unchecked 
                 if result.isFinal {
                     continuation.yield(.final(text))
                     continuation.finish()
-                    self?.stopAudio()
+                    self?.stopAudio(generation: myGeneration)
                 } else {
                     continuation.yield(.partial(text))
                 }
             } else if let error {
                 continuation.finish(throwing: Self.map(error, localeID: localeID))
-                self?.stopAudio()
+                self?.stopAudio(generation: myGeneration)
             }
         }
 
         lock.withLock {
-            self.engine = engine
-            self.request = request
-            self.task = task
-            self.continuation = continuation
+            if generation == myGeneration {
+                self.task = task
+                self.continuation = continuation
+            }
         }
         return stream
     }
 
     func finishAudio() {
-        stopAudio()
+        let current = lock.withLock { generation }
+        stopAudio(generation: current)
         let request = lock.withLock { self.request }
         request?.endAudio()
     }
 
     func cancel() {
-        stopAudio()
-        let (task, continuation) = lock.withLock { () -> (SFSpeechRecognitionTask?, Continuation?) in
-            let result = (self.task, self.continuation)
+        let (engine, task, continuation) = lock.withLock { () -> (AVAudioEngine?, SFSpeechRecognitionTask?, Continuation?) in
+            // 換代：之後這一輪晚到的回呼都會被忽略。
+            generation += 1
+            let result = (self.engine, self.task, self.continuation)
+            self.engine = nil
             self.task = nil
             self.request = nil
+            self.recognizer = nil
             self.continuation = nil
             return result
         }
+        Self.stop(engine)
         task?.cancel()
         continuation?.finish()
     }
 
-    /// 移除 tap、停止引擎（麥克風關閉）。可重複呼叫。
-    private func stopAudio() {
+    /// 移除 tap、停止引擎（麥克風關閉）；只處理屬於這一輪的引擎。
+    private func stopAudio(generation expected: Int) {
         let engine = lock.withLock { () -> AVAudioEngine? in
+            guard generation == expected else { return nil }
             let engine = self.engine
             self.engine = nil
             return engine
         }
+        Self.stop(engine)
+    }
+
+    private static func stop(_ engine: AVAudioEngine?) {
         guard let engine else { return }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()

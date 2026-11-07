@@ -5,7 +5,7 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T11:02:49+08:00
+- last_active: 2026-11-07T11:04:43+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: 整體審查修正（RED）
 - blocked_reason: （無）
@@ -67,3 +67,8 @@
 - Task 12/13 第三輪：UI 12/13，只剩編輯測試假設游標在結尾；改成清空後輸入整句並比對完全相同（更嚴格）。
 - 整體審查（opus）：Critical 0、Important 4（辨識舊回呼關掉新麥克風、翻譯可能永遠等待、翻譯 session 用錯語言對、SFSpeechRecognizer 只是區域變數）、Minor 8。
 - Final: Ruling: 審查 #5（翻譯途中耳機斷線中文改從喇叭播出）、#6（換語言後下載舊語言）由 Minor 升為 Important — 使用者會直接遇到 — 若錯：多兩個小修正。
+- Final: fixed #5 耳機斷線（翻成中文途中也停、聆聽中不停）— testHeadsetDisconnectWhileTranslatingToChineseStops / testHeadsetDisconnectWhileListeningKeepsListening RED→GREEN，suite 110/110
+- Final: fixed #6 換語言清掉舊下載 — testChangingLanguageClearsPendingDownload RED→GREEN，suite 110/110
+- Final: fixed #2（ViewModel 端）翻譯 20 秒逾時＋取消即放棄 — testTranslationTimeoutShowsRetry RED→GREEN，suite 110/110
+- Final: Ruling: #1 辨識回呼換代、#3 translation session 只處理自己語言對的工作、#4 保留 SFSpeechRecognizer、#2（翻譯服務端）取消時移除佇列工作 — 都在 Apple 框架實作裡，模擬器無法執行真實 Speech/Translation，寫不出會失敗的自動測試；以 macOS 編譯＋0 警告驗證，並列入實機測試計畫（第 10、12 項）— 若錯：實機測試時才會發現。
+- Final: minor (deferred): #7 新一句開始時沒先 stopSpeaking；#8 utterance 用 ObjectIdentifier 比對可能撞位址（改用 ===）；#9 譯文清空時播放鈕仍可按；#10 回到待機沒有 deactivate 音訊（太太的音樂不會自動恢復）；#11 TalkBridgeFakes 也連結進 Release；#12 伺服器辨識的網路錯誤被顯示成「無法辨識這個語言」

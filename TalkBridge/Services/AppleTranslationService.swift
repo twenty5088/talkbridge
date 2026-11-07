@@ -15,18 +15,24 @@ struct TranslationSessionBox: @unchecked Sendable {
 /// 所以整個 App 只有 `TranslationHostView` 一處掛 `.translationTask`，由這個服務驅動：
 /// 1. ViewModel 呼叫 translate／prepare → 工作排進佇列，設定（或 invalidate）configuration。
 /// 2. SwiftUI 因 configuration 變化重新執行 translationTask，呼叫 `process(_:service:)`。
-/// 3. `process` 依序取出同一語言對的工作，把結果交回各自的 continuation。
+/// 3. `process` 記下這次 session 的語言對，只處理同一語言對的工作；其他語言對的工作留給下一次。
+/// 4. 呼叫端取消（停止、逾時）時，還沒處理的工作會從佇列移除。
 @MainActor
 @Observable
 final class AppleTranslationService: TranslationService {
+    struct Pair: Equatable, Sendable {
+        let source: String
+        let target: String
+    }
+
     struct Job: Sendable {
         enum Kind: Sendable {
             case translate(String)
             case prepare
         }
+        let id: UUID
         let kind: Kind
-        let source: String
-        let target: String
+        let pair: Pair
         let continuation: CheckedContinuation<String, Error>
     }
 
@@ -34,7 +40,7 @@ final class AppleTranslationService: TranslationService {
     private(set) var configuration: TranslationSession.Configuration?
 
     @ObservationIgnored private var jobs: [Job] = []
-    @ObservationIgnored private var configuredPair: (source: String, target: String)?
+    @ObservationIgnored private var configuredPair: Pair?
 
     nonisolated func readiness(source: String, target: String) async -> TranslationReadiness {
         let status = await LanguageAvailability().status(from: Locale.Language(identifier: source),
@@ -48,41 +54,51 @@ final class AppleTranslationService: TranslationService {
     }
 
     nonisolated func prepare(source: String, target: String) async throws {
-        _ = try await enqueue(.prepare, source: source, target: target)
+        _ = try await enqueue(.prepare, pair: Pair(source: source, target: target))
     }
 
     nonisolated func translate(_ text: String, source: String, target: String) async throws -> String {
-        try await enqueue(.translate(text), source: source, target: target)
+        try await enqueue(.translate(text), pair: Pair(source: source, target: target))
     }
 
-    private func enqueue(_ kind: Job.Kind, source: String, target: String) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            jobs.append(Job(kind: kind, source: source, target: target, continuation: continuation))
-            if let pair = configuredPair, pair.source == source, pair.target == target, configuration != nil {
-                configuration?.invalidate()   // 同一語言對：讓 translationTask 再跑一次
-            } else {
-                configuredPair = (source, target)
-                configuration = TranslationSession.Configuration(source: Locale.Language(identifier: source),
-                                                                 target: Locale.Language(identifier: target))
+    private func enqueue(_ kind: Job.Kind, pair: Pair) async throws -> String {
+        let id = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                jobs.append(Job(id: id, kind: kind, pair: pair, continuation: continuation))
+                if configuredPair == pair, configuration != nil {
+                    configuration?.invalidate()   // 同一語言對：讓 translationTask 再跑一次
+                } else {
+                    configuredPair = pair
+                    configuration = TranslationSession.Configuration(source: Locale.Language(identifier: pair.source),
+                                                                     target: Locale.Language(identifier: pair.target))
+                }
             }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.removeJob(id) }
         }
     }
 
-    /// 取出下一個屬於目前語言對的工作；語言對已經換掉的舊工作直接作廢。
-    func nextJob() -> Job? {
-        while !jobs.isEmpty {
-            let job = jobs.removeFirst()
-            if let pair = configuredPair, pair.source == job.source, pair.target == job.target {
-                return job
-            }
-            job.continuation.resume(throwing: AppError.translationFailed)
-        }
-        return nil
+    /// 呼叫端已取消：還沒被處理的工作直接移除，不再浪費時間翻譯。
+    private func removeJob(_ id: UUID) {
+        guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
+        let job = jobs.remove(at: index)
+        job.continuation.resume(throwing: CancellationError())
+    }
+
+    /// translationTask 開始時記下的語言對（就是這次 session 的語言對）。
+    func currentPair() -> Pair? { configuredPair }
+
+    /// 取出下一個屬於指定語言對的工作；其他語言對的工作留在佇列等下一次 session。
+    func nextJob(for pair: Pair) -> Job? {
+        guard let index = jobs.firstIndex(where: { $0.pair == pair }) else { return nil }
+        return jobs.remove(at: index)
     }
 
     /// 由 TranslationHostView 的 translationTask 呼叫。在同一個 Task 裡依序使用 session。
     nonisolated static func process(_ box: TranslationSessionBox, service: AppleTranslationService) async {
-        while let job = await service.nextJob() {
+        guard let pair = await service.currentPair() else { return }
+        while !Task.isCancelled, let job = await service.nextJob(for: pair) {
             switch job.kind {
             case .prepare:
                 do {

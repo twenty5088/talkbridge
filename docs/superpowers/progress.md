@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T09:53:02+08:00
+- last_active: 2026-11-07T09:57:00+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: Task 10 Step 2（RED）
+- current: Task 11 Step 1（Apple 框架實作）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -21,7 +21,7 @@
 - [x] Task 7: ViewModel 模式 A
 - [x] Task 8: ViewModel 模式 B
 - [x] Task 9: 並發、權限、語言準備、中斷
-- [ ] Task 10: 自動輪流
+- [x] Task 10: 自動輪流
 - [ ] Task 11: Apple 框架實作
 - [ ] Task 12: SwiftUI 介面
 - [ ] Task 13: UI 測試
@@ -56,3 +56,4 @@
 - 注意：Linux XCTest 不支援「@MainActor 類別裡的同步測試方法」（會 signal 6 當掉），這種類別的測試一律寫成 async。
 - Task 9: complete（commits 7c092da..c49b610；core-tests #23 96/96 pass）
 - Ruling: ManualSleeper.waitForPendingCount 加上限、core.yml 加 timeout-minutes 15 — RED 測試曾因無上限等待卡住 CI 超過 10 分鐘 — 若錯：無。
+- Task 10: complete（commits eb126a9..229b948；core-tests #26 105/105 pass）

@@ -47,7 +47,7 @@ public struct AudioRouteInfo: Equatable, Sendable {
         let kind: AudioOutputKind
         switch portType {
         case "BluetoothA2DPOutput", "BluetoothHFP", "BluetoothLE":
-            kind = portName.localizedCaseInsensitiveContains("AirPods") ? .airPods : .bluetooth
+            kind = portName.lowercased().contains("airpods") ? .airPods : .bluetooth
         case "Speaker": kind = .speaker
         case "Receiver": kind = .receiver
         case "Headphones", "USBAudio": kind = .headphones

@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T09:06:21+08:00
+- last_active: 2026-11-07T09:07:46+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: Task 5 Step 2（RED）
+- current: Task 6 Step 2（RED）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -16,7 +16,7 @@
 - [x] Task 2: 語言、方向、對照與設定值
 - [x] Task 3: 錯誤對照與音訊路由對照
 - [x] Task 4: Service protocols、Sleeper 與假服務
-- [ ] Task 5: 狀態機
+- [x] Task 5: 狀態機
 - [ ] Task 6: 一句話結束偵測
 - [ ] Task 7: ViewModel 模式 A
 - [ ] Task 8: ViewModel 模式 B
@@ -41,3 +41,4 @@
 - Ruling: CallLog 由 actor 改成 Mutex 保護的 final class、同步 record — actor 的非同步記錄會讓呼叫順序不確定，測不了「服務呼叫順序」— 若錯：無。
 - Task 4: complete（commit 0ddb9ad；core-tests #10 24/24 pass）。Fakes 加了 emit()/setMode()/setReadiness() 等測試輔助。
 - Ruling: 狀態機允許 readyToPlayForPartner → listeningToUser — Task 8「重新錄音」需要從待播直接重錄 — 若錯：多一條轉換。
+- Task 5: complete（commit 9f452ab；core-tests #12 34/34 pass）

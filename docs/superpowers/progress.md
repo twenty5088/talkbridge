@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T09:57:00+08:00
+- last_active: 2026-11-07T10:13:39+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: Task 11 Step 1（Apple 框架實作）
+- current: Task 12/13（畫面＋UI 測試，一起推送）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -22,7 +22,7 @@
 - [x] Task 8: ViewModel 模式 B
 - [x] Task 9: 並發、權限、語言準備、中斷
 - [x] Task 10: 自動輪流
-- [ ] Task 11: Apple 框架實作
+- [x] Task 11: Apple 框架實作
 - [ ] Task 12: SwiftUI 介面
 - [ ] Task 13: UI 測試
 - [ ] Task 14: 文件、最終乾淨建置、下載 ipa
@@ -57,3 +57,8 @@
 - Task 9: complete（commits 7c092da..c49b610；core-tests #23 96/96 pass）
 - Ruling: ManualSleeper.waitForPendingCount 加上限、core.yml 加 timeout-minutes 15 — RED 測試曾因無上限等待卡住 CI 超過 10 分鐘 — 若錯：無。
 - Task 10: complete（commits eb126a9..229b948；core-tests #26 105/105 pass）
+- Task 11: complete（commits 9f0af08..0c13e93；ios #27 build 成功、Core 105/105、UI 1/1、warnings 0、ipa 產出）
+- Ruling: TranslationSession 用 @unchecked Sendable 的 TranslationSessionBox 帶進 nonisolated 的 process()——它不是 Sendable，Swift 6 不讓它跨到主執行緒；整個 App 只在同一個 translationTask 裡依序使用，不會並行 — 若錯：理論上的資料競爭，實機測試要留意翻譯是否偶發失敗。
+- Ruling: 設計文件 §5.1 提到 iOS 26 可直接建立 session；改成 iOS 18/26 都走同一個 translationTask 宿主 — 少維護一條路 — 若錯：iOS 26 少用一個較新的 API，功能相同。
+- Ruling: Task 12 與 Task 13 分兩個 commit、一次推送跑 macOS — 每輪 macOS 約 10–15 分鐘 — 若錯：失敗時要自己分辨是畫面還是測試的問題。
+- Ruling: UI 測試假模式的倒數設成 5 秒（正式版仍是 2 秒）— 讓 UI 測試來得及按「取消倒數」— 若錯：無。

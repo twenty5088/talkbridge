@@ -55,7 +55,7 @@ final class AppEnvironment {
         // UI 測試用真實時間跑完流程，所以把等待縮短。
         var configuration = ConversationConfiguration.standard
         configuration.silenceTimeout = .milliseconds(300)
-        configuration.playbackCountdown = 1
+        configuration.playbackCountdown = 5   // 留時間給 UI 測試按「取消倒數」
         configuration.postPlaybackMicGuard = .milliseconds(100)
         let settings = SettingsViewModel(store: InMemorySettingsStore())
         let conversation = ConversationViewModel(

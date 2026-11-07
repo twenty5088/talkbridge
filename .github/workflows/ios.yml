@@ -1,0 +1,102 @@
+# 雲端 Mac 完整流程：環境資訊 → 產生專案 → 套件單元測試（iOS 模擬器）→ App 建置＋UI 測試 → 警告檢查 → 未簽章 ipa。
+# Kevin 沒有 Mac：ipa 下載後用 Sideloadly（Windows）以免費 Apple ID 簽章安裝。
+name: ios
+on:
+  push:
+    paths:
+      - "TalkBridge/**"
+      - "TalkBridgeUITests/**"
+      - "Packages/**"
+      - "project.yml"
+      - "scripts/pick_simulator.sh"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          echo "Selecting $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+
+      - name: Environment
+        run: |
+          xcodebuild -version
+          swift --version
+          xcodebuild -showsdks
+          xcrun simctl list devices available
+          MAJOR=$(xcodebuild -version | head -1 | awk '{print $2}' | cut -d. -f1)
+          if [ "$MAJOR" -lt 26 ]; then echo "::error::需要 Xcode 26 以上，目前是 $MAJOR"; exit 1; fi
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Pick simulator
+        run: echo "DEST=$(scripts/pick_simulator.sh)" >> "$GITHUB_ENV"
+
+      - name: Core unit tests on iOS Simulator
+        run: |
+          set -o pipefail
+          cd Packages/TalkBridgeCore
+          xcodebuild -list
+          xcodebuild test -scheme TalkBridgeCore-Package -destination "$DEST" \
+            -derivedDataPath ../../DerivedData-core -resultBundlePath ../../CoreTests.xcresult 2>&1 | tee ../../core-build.log | tail -40
+
+      - name: App build and UI tests
+        run: |
+          set -o pipefail
+          xcodebuild test -project TalkBridge.xcodeproj -scheme TalkBridge -destination "$DEST" \
+            -derivedDataPath DerivedData -resultBundlePath UITests.xcresult 2>&1 | tee build.log | tail -60
+
+      - name: Test summaries
+        if: always()
+        run: |
+          for r in CoreTests UITests; do
+            if [ -d "$r.xcresult" ]; then
+              xcrun xcresulttool get test-results summary --path "$r.xcresult" --format json > "$r-summary.json" || true
+              python3 -c "import json,sys;d=json.load(open('$r-summary.json'));print('$r', 'result=',d.get('result'),'passedTests=',d.get('passedTests'),'failedTests=',d.get('failedTests'),'skippedTests=',d.get('skippedTests'))" | tee -a "$GITHUB_STEP_SUMMARY" || true
+            fi
+          done
+
+      - name: Compiler warnings check
+        if: always()
+        run: |
+          cat core-build.log build.log 2>/dev/null | grep -E "/(TalkBridge|TalkBridgeUITests|Packages/TalkBridgeCore)/[^:]+:[0-9]+:[0-9]+: warning:" | sort -u > warnings.txt || true
+          COUNT=$(wc -l < warnings.txt | tr -d ' ')
+          echo "warnings count: $COUNT" | tee -a "$GITHUB_STEP_SUMMARY"
+          cat warnings.txt
+          [ "$COUNT" -eq 0 ]
+
+      - name: Build unsigned Release ipa
+        run: |
+          set -o pipefail
+          xcodebuild -project TalkBridge.xcodeproj -scheme TalkBridge -configuration Release -sdk iphoneos \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} MARKETING_VERSION=1.${{ github.run_number }} build 2>&1 | tail -20
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/TalkBridge.app Payload/
+          zip -qr TalkBridge-v${{ github.run_number }}.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TalkBridge-v${{ github.run_number }}-ipa
+          path: TalkBridge-v${{ github.run_number }}.ipa
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.run_number }}
+          path: |
+            *.xcresult
+            *-summary.json
+            warnings.txt
+            build.log
+            core-build.log

@@ -2,4 +2,12 @@
 public enum Speaker: String, Sendable, CaseIterable {
     case partner
     case user
+
+    /// 輪流對話中的另一方。
+    public var other: Speaker {
+        switch self {
+        case .partner: .user
+        case .user: .partner
+        }
+    }
 }

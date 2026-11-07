@@ -9,3 +9,4 @@ dist/
 .superpowers/
 .swiftpm/
 *.xcresult
+.ci-*.out

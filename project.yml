@@ -1,0 +1,56 @@
+name: TalkBridge
+options:
+  bundleIdPrefix: com.twenty5088
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+packages:
+  TalkBridgeCore:
+    path: Packages/TalkBridgeCore
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+targets:
+  TalkBridge:
+    type: application
+    platform: iOS
+    sources:
+      - path: TalkBridge
+        excludes:
+          - "Resources/Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.twenty5088.talkbridge
+        INFOPLIST_FILE: TalkBridge/Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - package: TalkBridgeCore
+        product: TalkBridgeCore
+      - package: TalkBridgeCore
+        product: TalkBridgeFakes
+  TalkBridgeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TalkBridgeUITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: TalkBridge
+        PRODUCT_BUNDLE_IDENTIFIER: com.twenty5088.talkbridge.uitests
+    dependencies:
+      - target: TalkBridge
+      - package: TalkBridgeCore
+        product: TalkBridgeCore
+schemes:
+  TalkBridge:
+    build:
+      targets:
+        TalkBridge: all
+    test:
+      targets:
+        - TalkBridgeUITests

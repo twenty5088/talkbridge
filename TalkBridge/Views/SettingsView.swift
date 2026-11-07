@@ -62,12 +62,6 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    NavigationLink("語言判斷測試（實驗）") { DualRecognitionProbeView() }
-                } footer: {
-                    Text("測試兩種語言同時辨識，供開發自動判斷語言使用。")
-                }
-
-                Section {
                     LabeledContent("版本", value: Self.versionText)
                 }
             }

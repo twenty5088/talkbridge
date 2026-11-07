@@ -67,7 +67,7 @@ TalkBridgeUITests/                 XCUITest
 - **明確的狀態機**：所有狀態變化都經過 `ConversationStateMachine`；硬規則是「播放中不能直接進入聆聽」，播放結束、再等 0.3 秒保護間隔才會重新開麥克風，避免把自己的聲音再辨識一次。
 - **同一時間只有一個工作**：開始新工作前一定先取消舊工作；連續按鈕不會重複開錄音引擎；停止後回來的翻譯結果會丟棄。
 - **翻譯集中整合**：Translation framework 只能透過 SwiftUI 的 `.translationTask` 取得 session，整個 App 只有 `TranslationHostView` 一處使用它，由 `AppleTranslationService` 的工作佇列驅動。
-- **可測試的時間**：停頓 1.2 秒、最長 30 秒、倒數 2 秒等都透過注入的 `Sleeper` 計時，測試用 `ManualSleeper` 精準推進虛擬時間，不用固定 sleep。
+- **可測試的時間**：停頓秒數（預設 2 秒，設定可調 1.2–4 秒）、最長 30 秒、倒數 2 秒等都透過注入的 `Sleeper` 計時，測試用 `ManualSleeper` 精準推進虛擬時間，不用固定 sleep。
 
 ## 7. 如何建置
 
@@ -200,15 +200,15 @@ xcodebuild -project TalkBridge.xcodeproj -scheme TalkBridge -configuration Relea
 
 ## 18. 最終測試結果摘要
 
-最終驗證的程式版本：commit `e3fa11d`（2026-11-07）。
+最終驗證的程式版本：commit `5abbb3f`（2026-11-07，加入可調停頓秒數）。
 
 | 項目 | 結果 |
 |---|---|
-| Linux 單元測試（core-tests #35） | 110 個，通過 110、失敗 0、略過 0 |
-| iOS 模擬器單元測試（ios #35） | 110 個，通過 110、失敗 0、略過 0 |
-| iOS UI 測試（ios #35） | 13 個，通過 13、失敗 0、略過 0 |
+| Linux 單元測試（core-tests，commit 5abbb3f） | 119 個，通過 119、失敗 0、略過 0 |
+| iOS 模擬器單元測試（ios #37） | 119 個，通過 119、失敗 0、略過 0 |
+| iOS UI 測試（ios #37） | 14 個，通過 14、失敗 0、略過 0 |
 | 本專案程式的編譯警告 | 0 |
-| App 建置（Debug 模擬器、Release iphoneos 未簽章） | 成功，產生 `TalkBridge-v35.ipa` |
+| App 建置（Debug 模擬器、Release iphoneos 未簽章） | 成功，產生 `TalkBridge-v37.ipa` |
 | 實機測試 | **尚未執行**，見 `docs/PhysicalDeviceTestPlan.md` |
 
 整體審查（另一個模型唯讀審查全部程式）：沒有 Critical；6 個 Important 已修正（能自動測的 3 項都先寫了會失敗的測試）；6 個 Minor 留到下一版，清單在 `docs/superpowers/progress.md`。

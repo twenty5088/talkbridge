@@ -5,7 +5,7 @@
 - status: DONE
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T15:53:13+08:00
+- last_active: 2026-11-07T16:08:37+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: 完成（等 Kevin 實機測試）
 - blocked_reason: （無）
@@ -74,3 +74,7 @@
 - Final: minor (deferred): #7 新一句開始時沒先 stopSpeaking；#8 utterance 用 ObjectIdentifier 比對可能撞位址（改用 ===）；#9 譯文清空時播放鈕仍可按；#10 回到待機沒有 deactivate 音訊（太太的音樂不會自動恢復）；#11 TalkBridgeFakes 也連結進 Release；#12 伺服器辨識的網路錯誤被顯示成「無法辨識這個語言」
 - Task 12/13/14 + 審查修正：ios #35（commit e3fa11d）Core 110/110、UI 13/13、warnings 0、ipa v35；core-tests #35 110/110。
 - 2026-11-07 完成：ipa v35 下載到 dist/；final-report.md 已寫；自動續做排程停用。
+- 2026-11-07 變更（Kevin 要求）：停頓預設 1.2→2 秒並可在設定調整（1.2/1.5/2/2.5/3/4 秒）。RED：PauseSettingTests 9 項＋改 ModeA/Detector/Configuration 測試，因缺 pauseSeconds/userPause 編譯失敗；GREEN：core 119/119。
+- Ruling: ConversationConfiguration.silenceTimeout 改為 Duration?，nil＝依使用者設定；只有 UI 測試假情境固定 0.3 秒 — 讓 UI 測試維持快速 — 若錯：假情境不反映使用者設定，只影響測試。
+- Ruling: AppSettings 自訂 init(from:) 用 decodeIfPresent — 舊版存下的設定少了新欄位時不會整份被重置 — 若錯：升級後設定被重置。
+- 停頓設定驗證：ios #37（commit 5abbb3f）Core 119/119、UI 14/14（新增 testPauseSettingDefaultsToTwoSecondsAndCanChange）、warnings 0、ipa v37 下載到 dist/。

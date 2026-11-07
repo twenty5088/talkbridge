@@ -34,7 +34,7 @@ public struct AppSettings: Equatable, Sendable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case outputPreference, confirmBeforePlay, continueListeningAfterPartner, fontScale, mode, pauseSeconds
+        case outputPreference, confirmBeforePlay, continueListeningAfterPartner, fontScale, mode, pauseSeconds, voiceIdentifiers
     }
 
     /// 舊版存下的設定缺少新欄位時用預設值，不讓整份設定解碼失敗而被重置。
@@ -48,5 +48,6 @@ public struct AppSettings: Equatable, Sendable, Codable {
         fontScale = try c.decodeIfPresent(Double.self, forKey: .fontScale) ?? d.fontScale
         mode = try c.decodeIfPresent(ConversationMode.self, forKey: .mode) ?? d.mode
         pauseSeconds = try c.decodeIfPresent(Double.self, forKey: .pauseSeconds) ?? d.pauseSeconds
+        voiceIdentifiers = try c.decodeIfPresent([String: String].self, forKey: .voiceIdentifiers) ?? d.voiceIdentifiers
     }
 }

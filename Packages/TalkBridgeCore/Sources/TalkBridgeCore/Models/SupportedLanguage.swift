@@ -39,6 +39,17 @@ public enum PartnerLanguage: String, CaseIterable, Sendable, Identifiable {
 
     /// 語音合成用的語言（AVSpeechSynthesisVoice）。
     var voiceLanguageID: String { speechLocaleID }
+
+    /// 設定頁試聽聲音時唸的句子。
+    var voiceSampleText: String {
+        switch self {
+        case .english: "Hello, nice to meet you."
+        case .indonesian: "Halo, senang bertemu dengan Anda."
+        case .thai: "สวัสดี ยินดีที่ได้รู้จัก"
+        case .japanese: "こんにちは、はじめまして。"
+        case .korean: "안녕하세요, 만나서 반갑습니다."
+        }
+    }
 }
 
 /// 使用者這一側固定是繁體中文（台灣）。

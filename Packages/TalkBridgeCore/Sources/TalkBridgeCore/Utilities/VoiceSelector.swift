@@ -4,7 +4,13 @@ public enum VoiceQuality: Int, Comparable, Sendable {
     public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 
     /// 設定頁顯示用（對應「閱讀與朗讀 → 聲音」裡的名稱）。
-    public var label: String { "" }
+    public var label: String {
+        switch self {
+        case .premium: "高品質"
+        case .enhanced: "加強版"
+        case .standard: "一般"
+        }
+    }
 }
 
 /// 挑選語音時需要的資訊。
@@ -28,8 +34,14 @@ public enum VoiceSelector {
     /// 回傳要用的語音在 candidates 裡的位置；沒有可用的回傳 nil。
     public static func bestIndex(for languageID: String, in candidates: [VoiceCandidate],
                                  preferredIdentifier: String? = nil) -> Int? {
-        // 優先順序：完全相同語言 > 同語系其他地區；非趣味語音 > 趣味語音；品質高 > 低。同分取前面的。
-        guard let language = languageID.split(separator: "-").first.map(String.init) else { return nil }
+        // 使用者挑的聲音還在、而且是同一種語言 → 用它；被刪掉或是別的語言 → 退回自動。
+        if let preferredIdentifier,
+           let chosen = candidates.firstIndex(where: { $0.identifier == preferredIdentifier }),
+           sameLanguage(candidates[chosen].language, languageID) {
+            return chosen
+        }
+        // 自動：完全相同語言 > 同語系其他地區；非趣味語音 > 趣味語音；品質高 > 低。同分取前面的。
+        guard let language = baseLanguage(languageID) else { return nil }
         var best: (index: Int, key: (Int, Int, Int))?
         for (index, voice) in candidates.enumerated() {
             let exact = voice.language == languageID
@@ -41,8 +53,27 @@ public enum VoiceSelector {
     }
 
     /// 設定頁「選聲音」要列出的聲音（candidates 裡的位置）。
+    /// 同語言、不含趣味語音；本地區在前，再依品質高到低、名稱排序。
     public static func optionIndices(for languageID: String, in candidates: [VoiceCandidate]) -> [Int] {
-        []
+        candidates.indices
+            .filter { !candidates[$0].isNovelty && sameLanguage(candidates[$0].language, languageID) }
+            .sorted { a, b in
+                let x = candidates[a], y = candidates[b]
+                let xExact = x.language == languageID, yExact = y.language == languageID
+                if xExact != yExact { return xExact }
+                if x.quality != y.quality { return x.quality > y.quality }
+                if x.name != y.name { return x.name < y.name }
+                return a < b
+            }
+    }
+
+    private static func baseLanguage(_ languageID: String) -> String? {
+        languageID.split(separator: "-").first.map(String.init)
+    }
+
+    private static func sameLanguage(_ voiceLanguage: String, _ languageID: String) -> Bool {
+        guard let language = baseLanguage(languageID) else { return false }
+        return voiceLanguage == language || voiceLanguage.hasPrefix(language + "-")
     }
 }
 
@@ -53,5 +84,9 @@ public struct VoiceLanguage: Equatable, Sendable {
     /// 試聽時唸的句子（用該語言寫）。
     public var sampleText: String
 
-    public static let all: [VoiceLanguage] = []
+    public static let all: [VoiceLanguage] = [
+        VoiceLanguage(title: "中文", languageID: ChineseLocale.voiceLanguageID, sampleText: "你好，很高興認識你。"),
+    ] + PartnerLanguage.allCases.map {
+        VoiceLanguage(title: $0.displayName, languageID: $0.voiceLanguageID, sampleText: $0.voiceSampleText)
+    }
 }

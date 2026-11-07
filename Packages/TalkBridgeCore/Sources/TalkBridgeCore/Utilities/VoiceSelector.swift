@@ -19,9 +19,15 @@ public struct VoiceCandidate: Equatable, Sendable {
 public enum VoiceSelector {
     /// 回傳要用的語音在 candidates 裡的位置；沒有可用的回傳 nil。
     public static func bestIndex(for languageID: String, in candidates: [VoiceCandidate]) -> Int? {
-        // 基準（舊行為）：第一個完全相同語言的語音，否則同語系第一個。
-        if let i = candidates.firstIndex(where: { $0.language == languageID }) { return i }
+        // 優先順序：完全相同語言 > 同語系其他地區；非趣味語音 > 趣味語音；品質高 > 低。同分取前面的。
         guard let language = languageID.split(separator: "-").first.map(String.init) else { return nil }
-        return candidates.firstIndex { $0.language == language || $0.language.hasPrefix(language + "-") }
+        var best: (index: Int, key: (Int, Int, Int))?
+        for (index, voice) in candidates.enumerated() {
+            let exact = voice.language == languageID
+            guard exact || voice.language == language || voice.language.hasPrefix(language + "-") else { continue }
+            let key = (exact ? 1 : 0, voice.isNovelty ? 0 : 1, voice.quality.rawValue)
+            if best == nil || key > best!.key { best = (index, key) }
+        }
+        return best?.index
     }
 }

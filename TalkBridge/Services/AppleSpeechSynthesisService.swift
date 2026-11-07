@@ -15,22 +15,15 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
     }
 
     func voiceMatch(forLanguageID languageID: String) -> VoiceMatch {
-        let voices = AVSpeechSynthesisVoice.speechVoices()
-        if voices.contains(where: { $0.language == languageID }) {
-            return .exact
-        }
-        if let fallback = Self.closestVoice(to: languageID, in: voices) {
-            return .fallback(actualLanguageID: fallback.language)
-        }
-        return .none
+        guard let voice = Self.bestVoice(for: languageID) else { return .none }
+        return voice.language == languageID ? .exact : .fallback(actualLanguageID: voice.language)
     }
 
     func speak(_ text: String, languageID: String) async throws {
         try Task.checkCancellation()
         finishCurrent(with: .failure(CancellationError()))
         let utterance = AVSpeechUtterance(string: text)
-        let voices = AVSpeechSynthesisVoice.speechVoices()
-        utterance.voice = voices.first(where: { $0.language == languageID }) ?? Self.closestVoice(to: languageID, in: voices)
+        utterance.voice = Self.bestVoice(for: languageID)
         let id = ObjectIdentifier(utterance)
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -68,9 +61,19 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
         current.continuation.resume(with: result)
     }
 
-    /// 同語言（例如 en-US 找不到時用 en-GB）中第一個可用的語音。
-    private static func closestVoice(to languageID: String, in voices: [AVSpeechSynthesisVoice]) -> AVSpeechSynthesisVoice? {
-        guard let language = languageID.split(separator: "-").first.map(String.init) else { return nil }
-        return voices.first { $0.language == language || $0.language.hasPrefix(language + "-") }
+    /// 挑品質最好的語音：使用者在「設定 → 輔助使用 → 閱讀與朗讀 → 聲音」下載的高品質／加強版會優先使用；
+    /// 找不到該地區時改用同語言其他地區（例如 en-US 找不到時用 en-GB）。規則在 TalkBridgeCore 的 VoiceSelector。
+    private static func bestVoice(for languageID: String) -> AVSpeechSynthesisVoice? {
+        let voices = AVSpeechSynthesisVoice.speechVoices()
+        let candidates = voices.map { voice -> VoiceCandidate in
+            let quality: VoiceQuality = switch voice.quality {
+            case .premium: .premium
+            case .enhanced: .enhanced
+            default: .standard
+            }
+            return VoiceCandidate(language: voice.language, quality: quality,
+                                  isNovelty: voice.voiceTraits.contains(.isNoveltyVoice))
+        }
+        return VoiceSelector.bestIndex(for: languageID, in: candidates).map { voices[$0] }
     }
 }

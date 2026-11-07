@@ -192,7 +192,7 @@ final class ConversationViewModelRobustnessTests: XCTestCase {
         XCTAssertFalse(h.recognition.isListening)
     }
 
-    func testBackgroundWhileIdleStaysIdle() {
+    func testBackgroundWhileIdleStaysIdle() async {
         let h = Harness()
         h.vm.appDidEnterBackground()
         XCTAssertEqual(h.vm.state, .idle)

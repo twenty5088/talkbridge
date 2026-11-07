@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class SettingsViewModelTests: XCTestCase {
-    func testSettingsPersistThroughStore() {
+    func testSettingsPersistThroughStore() async {
         let store = InMemorySettingsStore()
         let first = SettingsViewModel(store: store)
         XCTAssertEqual(first.settings, AppSettings())
@@ -18,11 +18,11 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(second.settings.fontScale, 1.5)
     }
 
-    func testFontScaleOptions() {
+    func testFontScaleOptions() async {
         XCTAssertEqual(SettingsViewModel.fontScaleOptions, [0.85, 1.0, 1.2, 1.5])
     }
 
-    func testSettingsRoundTripThroughJSON() throws {
+    func testSettingsRoundTripThroughJSON() async throws {
         var settings = AppSettings()
         settings.mode = .autoAlternate
         settings.continueListeningAfterPartner = true

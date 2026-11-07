@@ -5,7 +5,7 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T09:37:33+08:00
+- last_active: 2026-11-07T09:38:59+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: Task 9 Step 2（RED）
 - blocked_reason: （無）
@@ -53,3 +53,4 @@
 - Task 8: complete（commits cf67b7d..89af8f8；core-tests #20 71/71 pass）
 - Ruling: Task 9 的「stopAll 時 log 有 cancel 與 synthesis.stop」拆成三個測試（聆聽中→cancel、翻譯中→結果丟棄、播放中→synthesis.stop）— 翻譯中本來就沒有麥克風與播放可停 — 若錯：無。
 - Ruling: FakeTranslationService 加 holdTranslations/releaseTranslations — 要測翻譯途中被停止 — 若錯：無。
+- 注意：Linux XCTest 不支援「@MainActor 類別裡的同步測試方法」（會 signal 6 當掉），這種類別的測試一律寫成 async。

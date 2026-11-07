@@ -4,14 +4,14 @@ public enum PartnerLanguage: String, CaseIterable, Sendable, Identifiable {
 
     public var id: String { rawValue }
 
-    /// 以該語言本身書寫的名稱，讓對方也看得懂。
+    /// 中文名稱（Kevin 2026-11-08 決定：App 由太太操作，選單用中文顯示）。
     public var displayName: String {
         switch self {
-        case .english: "English"
-        case .indonesian: "Bahasa Indonesia"
-        case .thai: "ไทย"
-        case .japanese: "日本語"
-        case .korean: "한국어"
+        case .english: "英文"
+        case .indonesian: "印尼文"
+        case .thai: "泰文"
+        case .japanese: "日文"
+        case .korean: "韓文"
         }
     }
 

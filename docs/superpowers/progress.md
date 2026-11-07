@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T19:44:23+08:00
+- last_active: 2026-11-07T19:46:57+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: v2 計畫 Task 7：整體審查找到 R1–R8，RED 測試 ReviewFixV2Tests.swift 已寫，接著逐項修（設計 specs/2026-11-07-auto-language-design.md 按鈕版）
+- current: v2 計畫 Task 7：R1–R8 已修、core 綠；接著 ios CI、下載 ipa、更新 final-report、status DONE
 - blocked_reason: （無）
 
 ## 任務清單
@@ -88,3 +88,8 @@
 - Task 6: Ruling: 卡片重播鈕在聆聽中改為可按（ConversationView canReplay），配合 P5。
 - Task 1–6: complete（commits 6238762..0ee6205）。
 - Task 7: README／PhysicalDeviceTestPlan（25–28）更新；v2 整體審查找到 R1–R8（記住的下一句殘留、保護間隔內中斷仍開麥克風、準備中重播、殘響過濾誤丟、雜音無限重聽、換語言用舊語言重試、錯誤沒結束自動輪流、待按播放沒提示），RED 測試寫在 ReviewFixV2Tests.swift。
+- Final(v2): RED core #51：ReviewFixV2Tests 14 項失敗（R3 重播競態直接當掉：speakingChinese→listeningToPartner 不允許）。
+- Final(v2): fixed R1–R8 — ReviewFixV2Tests RED→GREEN，core #52 166/166（commit 71726d6）。
+- Final(v2): Ruling: 殘響門檻 0.8→0.9、只比對播完 1.5 秒內開始的話、少於 4 個字母／數字不比對；舊測試 testDefaultThreshold 改成 0.9 — 審查 R4：寧可漏丟殘響也不可丟對方真的回答 — 若錯：喇叭殘響偶爾被翻回中文（實機測試 28 項會看到）。
+- Final(v2): Ruling: 沒有語音時（voiceMatch none）照樣接下一句；但待播句（外語沒語音）停在待播並清掉記住的下一句 — 待播句要留給對方看畫面 — 若錯：按了下一句卻要再按一次。
+- Final(v2): Ruling: 待機時（準備中或保護間隔內）進背景／來電／換語言改為 stopAll（不顯示錯誤畫面）— 沒有正在進行的一句，不需要錯誤畫面 — 若錯：無。

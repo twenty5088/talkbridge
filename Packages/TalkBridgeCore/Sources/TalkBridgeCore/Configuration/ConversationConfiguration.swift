@@ -11,6 +11,10 @@ public struct ConversationConfiguration: Sendable, Equatable {
     public var postPlaybackMicGuard: Duration = .milliseconds(300)
     /// 開始聆聽後一直沒有任何辨識結果的等待上限（自動輪流用來暫停）。
     public var autoTurnIdleTimeout: Duration = .seconds(15)
+    /// 自動輪流時，開始聆聽後多久沒有聲音才暫停（對方看畫面、想一下常超過 15 秒；v2 設計 P6）。
+    public var autoModeNoSpeechTimeout: Duration = .seconds(60)
+    /// 播放後第一句和剛播出的譯文相似度達到這個值，就當成喇叭殘響丟掉（v2 設計 P8）。
+    public var echoSimilarityThreshold: Double = 0.8
     /// 送出結束後等待最終辨識結果的上限，逾時就用最後一次部分結果。
     public var finalResultTimeout: Duration = .seconds(2)
     /// 去掉空白與標點後至少要有幾個字才算有效語句。

@@ -75,6 +75,10 @@ public final class ConversationViewModel {
     @ObservationIgnored private var pendingEntryID: UUID?
     /// 外語播放時暫時切到手機喇叭，播完要切回來。
     @ObservationIgnored private var outputOverridden = false
+    /// 剛播出的譯文與語言；播放後的第一句若幾乎一樣就當成喇叭殘響（v2 設計 P8）。
+    @ObservationIgnored private var lastPlayed: (text: String, languageID: String)?
+    /// 翻譯失敗的那一句；「再試一次」用它重新翻譯，不用重講（v2 設計 P7）。
+    @ObservationIgnored private var lastFailedUtterance: (text: String, direction: TranslationDirection)?
 
     private struct ListeningContext {
         let id: Int
@@ -120,6 +124,8 @@ public final class ConversationViewModel {
     public func stopAll() {
         cancelCurrentWork()
         clearPending()
+        lastPlayed = nil
+        lastFailedUtterance = nil
         currentTurn = nil
         queuedSpeaker = nil
         partialTranscript = ""
@@ -130,15 +136,46 @@ public final class ConversationViewModel {
         entries.removeAll()
     }
 
-    /// 重播某一句的翻譯。只播放，不開麥克風。
+    /// 重播某一句的翻譯。聆聽中按：先關麥克風、播放，播完再聽原本那一方（v2 設計 P5）。
     public func replay(_ entryID: UUID) {
-        guard !state.isBusy, let entry = entries.first(where: { $0.id == entryID }) else { return }
+        guard let entry = entries.first(where: { $0.id == entryID }) else { return }
+        var resumeSpeaker: Speaker?
+        if state.isMicrophoneActive {
+            resumeSpeaker = activeTurn
+            cancelCurrentWork()
+            partialTranscript = ""
+        } else if state.isBusy {
+            return
+        }
         if state != .idle { move(to: .idle) }
         lastError = nil
         let speakingState: ConversationState = entry.direction.speaker == .partner ? .speakingChinese : .speakingPartnerLanguage
         activeTask = Task { [weak self] in
             await self?.speak(entry.translation, direction: entry.direction, as: speakingState,
-                              continuesConversation: false)
+                              continuesConversation: false, resumeSpeaker: resumeSpeaker)
+        }
+    }
+
+    /// 對話進行中不讓螢幕自動鎖定（鎖定會讓 App 進背景而中斷對話；v2 設計 P3）。
+    public var keepsScreenAwake: Bool {
+        state.isBusy || currentTurn != nil || queuedSpeaker != nil
+    }
+
+    /// 麥克風狀態提示（v2 設計 P10）。待機時沒有。
+    public var microphoneHint: String? {
+        switch state {
+        case .listeningToUser: "現在可以說話：中文"
+        case .listeningToPartner: "現在可以說話：\(partnerLanguage.displayName)"
+        default: state.isBusy ? "請稍等，麥克風已關閉" : nil
+        }
+    }
+
+    /// 記住的下一句（v2 設計 §2）。
+    public var queuedHint: String? {
+        switch queuedSpeaker {
+        case .user: "下一句：我說中文"
+        case .partner: "下一句：對方說話"
+        case nil: nil
         }
     }
 
@@ -257,7 +294,17 @@ public final class ConversationViewModel {
             prepareLanguage()
         case .openSettings:
             break   // 由畫面開啟 iOS 設定；回來後再按一次開始即可重新檢查。
-        case .retry, .chooseAnotherLanguage, .dismiss:
+        case .retry:
+            lastError = nil
+            move(to: .idle)
+            if error == .translationFailed, let failed = lastFailedUtterance {
+                lastFailedUtterance = nil
+                activeTurn = failed.direction.speaker
+                activeTask = Task { [weak self] in
+                    await self?.deliver(failed.text, direction: failed.direction)
+                }
+            }
+        case .chooseAnotherLanguage, .dismiss:
             lastError = nil
             move(to: .idle)
         }
@@ -301,6 +348,7 @@ public final class ConversationViewModel {
         if state != .idle { move(to: .idle) }
         activeTurn = speaker
         queuedSpeaker = nil
+        lastFailedUtterance = nil
         currentTurn = settings.mode == .autoAlternate ? speaker : nil
         let direction = TranslationDirection.from(speaker: speaker, partner: partnerLanguage)
         activeTask = Task { [weak self] in
@@ -361,14 +409,34 @@ public final class ConversationViewModel {
 
         guard let text = await listen(to: stream, localeID: localeID, speaker: speaker) else { return }
 
-        guard UtteranceEndDetector.isMeaningful(text, configuration: configuration) else {
-            notice = Self.emptyTranscriptNotice
+        // 播放後的第一句：和剛播出的同語言譯文幾乎一樣，就是喇叭殘響。
+        let echoReference = lastPlayed
+        lastPlayed = nil
+        let isEcho = echoReference.map {
+            Self.sameLanguage($0.languageID, localeID)
+                && EchoFilter.isLikelyEcho(heard: text, played: $0.text, threshold: configuration.echoSimilarityThreshold)
+        } ?? false
+        let isMeaningful = UtteranceEndDetector.isMeaningful(text, configuration: configuration)
+        guard isMeaningful, !isEcho else {
             partialTranscript = ""
             move(to: .idle)
             finishTurn()
+            if isEcho || settings.mode == .autoAlternate {
+                logger(isEcho ? "echo discarded" : "empty transcript ignored")
+                scheduleTurn(speaker)   // 繼續聽同一方（間隔 postPlaybackMicGuard，不會快速空轉）
+            } else {
+                notice = Self.emptyTranscriptNotice
+            }
             return
         }
 
+        await deliver(text, direction: direction)
+    }
+
+    /// 翻譯並送出：對方的話翻成中文播放；太太的話翻成外語後倒數播放。
+    private func deliver(_ text: String, direction: TranslationDirection) async {
+        let speaker = direction.speaker
+        let pair = LocaleMapping.translationPair(for: direction)
         move(to: speaker == .partner ? .translatingToChinese : .translatingToPartnerLanguage)
         let translated: String
         do {
@@ -376,7 +444,11 @@ public final class ConversationViewModel {
         } catch is CancellationError {
             return
         } catch {
-            if !Task.isCancelled { fail((error as? AppError) ?? .translationFailed) }
+            if !Task.isCancelled {
+                let appError = (error as? AppError) ?? .translationFailed
+                fail(appError)
+                if appError == .translationFailed { lastFailedUtterance = (text: text, direction: direction) }
+            }
             return
         }
         guard !Task.isCancelled else { return }
@@ -417,7 +489,9 @@ public final class ConversationViewModel {
         defer { consumer.cancel() }
 
         // 監看迴圈：停頓、最長時間、完全沒聲音、使用者再按一次。
-        let detector = UtteranceEndDetector(configuration: configuration, userPause: settings.pauseDuration)
+        let detector = UtteranceEndDetector(
+            configuration: configuration, userPause: settings.pauseDuration,
+            noSpeechTimeout: settings.mode == .autoAlternate ? configuration.autoModeNoSpeechTimeout : nil)
         var reachedMaxDuration = false
         monitor: while true {
             if Task.isCancelled { return nil }
@@ -450,7 +524,7 @@ public final class ConversationViewModel {
                 finishTurn()
                 return nil
             }
-            await sleepUnlessWoken(for: nextDeadline(for: context, silenceTimeout: detector.silenceTimeout) - current)
+            await sleepUnlessWoken(for: nextDeadline(for: context, detector: detector) - current)
         }
 
         if reachedMaxDuration {
@@ -484,12 +558,12 @@ public final class ConversationViewModel {
         return context.lastPartial
     }
 
-    private func nextDeadline(for context: ListeningContext, silenceTimeout: Duration) -> Duration {
+    private func nextDeadline(for context: ListeningContext, detector: UtteranceEndDetector) -> Duration {
         let maxDeadline = context.start + configuration.maxUtteranceDuration
         if let lastChange = context.lastChange {
-            return min(maxDeadline, lastChange + silenceTimeout)
+            return min(maxDeadline, lastChange + detector.silenceTimeout)
         }
-        return min(maxDeadline, context.start + configuration.autoTurnIdleTimeout)
+        return min(maxDeadline, context.start + detector.noSpeechTimeout)
     }
 
     private func handle(_ update: RecognitionUpdate, listenID: Int) {
@@ -597,9 +671,11 @@ public final class ConversationViewModel {
         await speak(text, direction: pending.direction, as: .speakingPartnerLanguage)
     }
 
-    /// - Parameter continuesConversation: 播完後是否依設定自動換下一個人說（重播時為 false）。
+    /// - Parameters:
+    ///   - continuesConversation: 播完後是否依設定自動換下一個人說（重播時為 false）。
+    ///   - resumeSpeaker: 重播前正在聽誰；播完繼續聽這一方。
     private func speak(_ text: String, direction: TranslationDirection, as speakingState: ConversationState,
-                       continuesConversation: Bool = true) async {
+                       continuesConversation: Bool = true, resumeSpeaker: Speaker? = nil) async {
         let languageID = LocaleMapping.voiceLanguageID(for: direction)
         switch synthesis.voiceMatch(forLanguageID: languageID) {
         case .exact:
@@ -630,9 +706,14 @@ public final class ConversationViewModel {
             return
         }
         guard !Task.isCancelled else { return }
+        lastPlayed = (text: text, languageID: languageID)
         if state == speakingState { move(to: .idle) }
         finishTurn()
-        if continuesConversation { scheduleNextTurn(after: direction) }
+        if continuesConversation {
+            scheduleNextTurn(after: direction)
+        } else if let next = queuedSpeaker ?? resumeSpeaker {
+            scheduleTurn(next)
+        }
     }
 
     /// 自動輪流：換另一方。手動模式且開了「對方說完繼續聆聽」：再聽對方。
@@ -651,6 +732,11 @@ public final class ConversationViewModel {
             }
         }
         if settings.mode == .autoAlternate { currentTurn = next }
+        scheduleTurn(next)
+    }
+
+    /// 等 postPlaybackMicGuard 後開始聽指定的一方（仍在待機才開始）。
+    private func scheduleTurn(_ next: Speaker) {
         let sleeper = self.sleeper
         let micGuard = configuration.postPlaybackMicGuard
         activeTask = Task { [weak self] in
@@ -805,6 +891,11 @@ public final class ConversationViewModel {
             logger("invalid transition")
             assertionFailure("不允許的狀態轉換：\(error.from) → \(error.to)")
         }
+    }
+
+    /// "en-US" 與 "en-US"、"zh-TW" 與 "zh-TW"：比較語言部分。
+    private static func sameLanguage(_ a: String, _ b: String) -> Bool {
+        a.split(separator: "-").first == b.split(separator: "-").first
     }
 
     private static func recognitionError(_ error: Error, localeID: String) -> AppError {

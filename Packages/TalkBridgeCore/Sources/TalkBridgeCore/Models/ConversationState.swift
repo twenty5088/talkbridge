@@ -108,6 +108,11 @@ public struct ConversationStateMachine: Sendable {
              (.speakingPartnerLanguage, .readyToPlayForPartner):  // 停止播放後可重播
             return true
 
+        // 翻譯失敗按「再試一次」：用同一句文字重新翻譯（v2 設計 P7）
+        case (.idle, .translatingToChinese),
+             (.idle, .translatingToPartnerLanguage):
+            return true
+
         // 重播：只播放、不開麥克風
         case (.idle, .speakingChinese),
              (.idle, .speakingPartnerLanguage):

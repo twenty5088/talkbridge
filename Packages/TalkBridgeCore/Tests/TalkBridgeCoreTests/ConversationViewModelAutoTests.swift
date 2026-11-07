@@ -69,7 +69,7 @@ final class ConversationViewModelAutoTests: XCTestCase {
         h.vm.partnerButtonTapped()
         await waitUntil("listening") { h.vm.state == .listeningToPartner }
         await h.sleeper.waitForPendingCount(1)
-        h.sleeper.advance(by: .seconds(15))
+        h.sleeper.advance(by: .seconds(60))   // v2 設計 P6：自動輪流 60 秒（原 15 秒）
         await waitUntil("idle") { h.vm.state == .idle }
         XCTAssertNil(h.vm.currentTurn)
         XCTAssertEqual(h.vm.notice, "太久沒有聲音，已暫停自動輪流。")

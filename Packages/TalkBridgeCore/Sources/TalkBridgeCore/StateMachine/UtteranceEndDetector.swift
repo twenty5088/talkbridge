@@ -13,10 +13,14 @@ public struct UtteranceEndDetector: Sendable {
     private let configuration: ConversationConfiguration
     /// 實際使用的停頓秒數：設定檔有固定值就用它，否則用使用者設定。
     public let silenceTimeout: Duration
+    /// 開始聆聽後一直沒有任何辨識結果的等待上限。
+    public let noSpeechTimeout: Duration
 
-    public init(configuration: ConversationConfiguration, userPause: Duration = AppSettings().pauseDuration) {
+    public init(configuration: ConversationConfiguration, userPause: Duration = AppSettings().pauseDuration,
+                noSpeechTimeout: Duration? = nil) {
         self.configuration = configuration
         self.silenceTimeout = configuration.silenceTimeout ?? userPause
+        self.noSpeechTimeout = noSpeechTimeout ?? configuration.autoTurnIdleTimeout
     }
 
     /// - Parameters:
@@ -29,7 +33,7 @@ public struct UtteranceEndDetector: Sendable {
         if let sinceLastPartial {
             return sinceLastPartial >= silenceTimeout ? .endBySilence : .keepListening
         }
-        return elapsed >= configuration.autoTurnIdleTimeout ? .endByNoSpeech : .keepListening
+        return elapsed >= noSpeechTimeout ? .endByNoSpeech : .keepListening
     }
 
     /// 去掉空白與標點後，字母或數字至少要有 minimumMeaningfulCharacters 個。

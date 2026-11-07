@@ -1,0 +1,11 @@
+*.xcodeproj
+DerivedData/
+.build/
+build/
+*.ipa
+Payload/
+dist/
+.ci/
+.superpowers/
+.swiftpm/
+*.xcresult

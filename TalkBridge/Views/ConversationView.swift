@@ -14,11 +14,12 @@ struct ConversationView: View {
                 LanguagePickerView(selection: $conversation.partnerLanguage)
                 modePicker
                 StatusView(conversation: conversation)
-                AudioRouteView(route: conversation.route)
                 problemSection
+                // 待播控制放在狀態正下方，不會被底部的大按鈕列擋住。
                 if showsPlaybackControls {
                     PlaybackControlsView(conversation: conversation)
                 }
+                AudioRouteView(route: conversation.route)
                 historySection
             }
             .padding(.horizontal, 16)

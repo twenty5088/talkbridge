@@ -10,9 +10,11 @@ struct PlaybackControlsView: View {
             Text("要說給對方聽的翻譯")
                 .font(.headline)
             if conversation.isEditing {
-                TextField("翻譯文字", text: $conversation.editableTranslation, axis: .vertical)
+                // 單行輸入：按「完成」就收起鍵盤，不會擋住下面的播放按鈕。
+                TextField("翻譯文字", text: $conversation.editableTranslation)
                     .font(.title2)
                     .textFieldStyle(.roundedBorder)
+                    .submitLabel(.done)
                     .accessibilityIdentifier(AccessibilityID.translationEditor)
             } else {
                 Text(conversation.editableTranslation)
@@ -31,9 +33,9 @@ struct PlaybackControlsView: View {
                         .accessibilityIdentifier(AccessibilityID.cancelCountdownButton)
                 }
             }
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { buttons }
-                VStack(alignment: .leading, spacing: 8) { buttons }
+            // 用格狀排列自動換行（大字時也不會截斷）；每個按鈕在畫面結構裡只出現一次。
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 8)], alignment: .leading, spacing: 8) {
+                buttons
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -47,6 +49,7 @@ struct PlaybackControlsView: View {
             conversation.playForPartner()
         } label: {
             Label("播放", systemImage: "play.fill")
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
         .disabled(conversation.state.isSpeaking)

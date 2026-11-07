@@ -41,6 +41,8 @@ struct PartnerDisplayView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
+        // 外框只當容器；不加 .contain 的話，識別名稱會蓋掉裡面按鈕自己的名稱。
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.partnerDisplayView)
     }
 }

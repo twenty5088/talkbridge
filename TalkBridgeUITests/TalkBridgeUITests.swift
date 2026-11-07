@@ -122,7 +122,7 @@ final class TalkBridgeUITests: XCTestCase {
         let editor = app.textFields[AccessibilityID.translationEditor]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         editor.tap()
-        editor.typeText(" please")
+        editor.typeText(" please\n")   // 換行＝完成，收起鍵盤
 
         // 播放 → 停止 → 重播
         app.buttons[AccessibilityID.playButton].tap()

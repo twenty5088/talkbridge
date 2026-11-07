@@ -31,8 +31,9 @@ public final class ConversationViewModel {
             guard oldValue != partnerLanguage else { return }
             pendingPreparePair = nil
             queuedSpeaker = nil
-            if state.isBusy {
-                stopAll()
+            lastFailedUtterance = nil   // 不可用舊語言「再試一次」（審查 R6）
+            if state.isBusy || state == .idle {
+                stopAll()   // 待機時也可能正在準備或排定下一輪（保護間隔），一起取消（審查 R2）
             } else if state == .languageNotReady || state == .error(.languageUnsupported) {
                 lastError = nil
                 move(to: .idle)
@@ -79,6 +80,21 @@ public final class ConversationViewModel {
     @ObservationIgnored private var lastPlayed: (text: String, languageID: String)?
     /// 翻譯失敗的那一句；「再試一次」用它重新翻譯，不用重講（v2 設計 P7）。
     @ObservationIgnored private var lastFailedUtterance: (text: String, direction: TranslationDirection)?
+    /// 剛播完的時間；只有播完不久就開始的話才可能是殘響（審查 R4）。
+    @ObservationIgnored private var lastPlayedEnd: Duration?
+    /// 已排定、等保護間隔後要聽的一方（重播或中斷時要知道；審查 R2、R3）。
+    @ObservationIgnored private var scheduledSpeaker: Speaker?
+    /// 自動輪流連續沒有有效內容（雜音、殘響）的起點；累計超過沒聲音上限就暫停（審查 R5）。
+    @ObservationIgnored private var noSpeechStreakStart: Duration?
+
+    /// 一句話聆聽的結果。
+    private struct Heard {
+        let text: String
+        /// 開始聆聽的時間。
+        let start: Duration
+        /// 第一次聽到文字的時間（沒有部分結果時＝開始聆聽）。
+        let speechStart: Duration
+    }
 
     private struct ListeningContext {
         let id: Int
@@ -95,6 +111,7 @@ public final class ConversationViewModel {
 
     static let serverRecognitionNotice = "此語言的語音辨識需要網路（由 Apple 處理）"
     static let emptyTranscriptNotice = "沒有聽到內容，請再說一次。"
+    static let autoPausedNotice = "太久沒有聲音，已暫停自動輪流。"
     static let speakerOverrideFailureNotice = "外語仍從耳機播出，請改用「給對方看」或在設定改成一律用手機喇叭。"
 
     public init(recognition: any SpeechRecognitionService, translation: any TranslationService,
@@ -127,7 +144,9 @@ public final class ConversationViewModel {
         cancelCurrentWork()
         clearPending()
         lastPlayed = nil
+        lastPlayedEnd = nil
         lastFailedUtterance = nil
+        noSpeechStreakStart = nil
         currentTurn = nil
         queuedSpeaker = nil
         partialTranscript = ""
@@ -148,6 +167,10 @@ public final class ConversationViewModel {
             partialTranscript = ""
         } else if state.isBusy {
             return
+        } else if state == .idle, let pending = activeTurn ?? scheduledSpeaker {
+            // 正在準備開始聽（權限、語言檢查）或在保護間隔內：先取消，播完再聽這一方（審查 R3）。
+            resumeSpeaker = pending
+            cancelCurrentWork()
         }
         if state != .idle { move(to: .idle) }
         lastError = nil
@@ -168,6 +191,7 @@ public final class ConversationViewModel {
         switch state {
         case .listeningToUser: "現在可以說話：中文"
         case .listeningToPartner: "現在可以說話：\(partnerLanguage.displayName)"
+        case .readyToPlayForPartner(countdown: nil): "按「播放」給對方聽，或按按鈕繼續說"
         default: state.isBusy ? "請稍等，麥克風已關閉" : nil
         }
     }
@@ -200,7 +224,7 @@ public final class ConversationViewModel {
                 stopWithError(.headsetDisconnected)
             }
         case .interruptionBegan:
-            if state.isBusy { stopWithError(.audioInterrupted) }
+            if state.isBusy { stopWithError(.audioInterrupted) } else if state == .idle { stopAll() }
         case .interruptionEnded:
             break   // 不自動恢復；使用者再按一次開始。
         case .mediaServicesReset:
@@ -219,6 +243,8 @@ public final class ConversationViewModel {
     public func appDidEnterBackground() {
         if state.isBusy {
             stopWithError(.appBackgrounded)
+        } else if state == .idle {
+            stopAll()   // 準備中或保護間隔內：取消排定的下一輪，不在背景開麥克風（審查 R2）
         }
     }
 
@@ -318,7 +344,12 @@ public final class ConversationViewModel {
     /// 辨識、翻譯、倒數或播放中按＝記住下一句換誰說，不中斷目前這句（以最後按的為準）。
     private func buttonTapped(_ speaker: Speaker) {
         if state.isMicrophoneActive {
-            if activeTurn == speaker { requestEndOfUtterance() } else { startTurn(speaker) }
+            if activeTurn == speaker {
+                requestEndOfUtterance()
+            } else {
+                noSpeechStreakStart = nil
+                startTurn(speaker)
+            }
             return
         }
         if Self.queuesNextSpeaker(in: state) {
@@ -326,6 +357,7 @@ public final class ConversationViewModel {
             return
         }
         if activeTurn == speaker { return }   // 正在準備（權限、語言檢查）：忽略重複點擊
+        noSpeechStreakStart = nil
         startTurn(speaker)
     }
 
@@ -409,29 +441,51 @@ public final class ConversationViewModel {
         move(to: speaker == .partner ? .listeningToPartner : .listeningToUser)
         logger("listening started")
 
-        guard let text = await listen(to: stream, localeID: localeID, speaker: speaker) else { return }
+        guard let heard = await listen(to: stream, localeID: localeID, speaker: speaker) else { return }
+        let text = heard.text
 
-        // 播放後的第一句：和剛播出的同語言譯文幾乎一樣，就是喇叭殘響。
+        // 播放後的第一句：播完不久就開始、而且和剛播出的同語言譯文幾乎一樣，才是喇叭殘響。
         let echoReference = lastPlayed
+        let playedEnd = lastPlayedEnd
         lastPlayed = nil
-        let isEcho = echoReference.map {
+        lastPlayedEnd = nil
+        let startedRightAfterPlayback = playedEnd.map {
+            heard.speechStart - $0 <= configuration.echoWindowAfterPlayback
+        } ?? false
+        let isEcho = startedRightAfterPlayback && (echoReference.map {
             Self.sameLanguage($0.languageID, localeID)
                 && EchoFilter.isLikelyEcho(heard: text, played: $0.text, threshold: configuration.echoSimilarityThreshold)
-        } ?? false
+        } ?? false)
         let isMeaningful = UtteranceEndDetector.isMeaningful(text, configuration: configuration)
         guard isMeaningful, !isEcho else {
             partialTranscript = ""
             move(to: .idle)
             finishTurn()
-            if isEcho || settings.mode == .autoAlternate {
-                logger(isEcho ? "echo discarded" : "empty transcript ignored")
-                scheduleTurn(speaker)   // 繼續聽同一方（間隔 postPlaybackMicGuard，不會快速空轉）
+            logger(isEcho ? "echo discarded" : "empty transcript ignored")
+            if let queued = queuedSpeaker {
+                // 使用者已指定下一句：照做，不可殘留（審查 R1）。
+                noSpeechStreakStart = nil
+                if settings.mode == .autoAlternate { currentTurn = queued }
+                scheduleTurn(queued)
+            } else if isEcho || settings.mode == .autoAlternate {
+                // 繼續聽同一方；自動輪流連續沒有有效內容累計超過上限就暫停（審查 R5）。
+                let streakStart = noSpeechStreakStart ?? heard.start
+                if settings.mode == .autoAlternate,
+                   sleeper.now - streakStart >= configuration.autoModeNoSpeechTimeout {
+                    noSpeechStreakStart = nil
+                    notice = Self.autoPausedNotice
+                    currentTurn = nil
+                } else {
+                    noSpeechStreakStart = streakStart
+                    scheduleTurn(speaker)   // 間隔 postPlaybackMicGuard，不會快速空轉
+                }
             } else {
                 notice = Self.emptyTranscriptNotice
             }
             return
         }
 
+        noSpeechStreakStart = nil
         await deliver(text, direction: direction)
     }
 
@@ -474,7 +528,7 @@ public final class ConversationViewModel {
 
     /// 聆聽直到一句話結束，回傳辨識文字；被取消或失敗時回傳 nil（狀態已處理）。
     private func listen(to stream: AsyncThrowingStream<RecognitionUpdate, Error>,
-                        localeID: String, speaker: Speaker) async -> String? {
+                        localeID: String, speaker: Speaker) async -> Heard? {
         listenCounter += 1
         let listenID = listenCounter
         listening = ListeningContext(id: listenID, start: sleeper.now)
@@ -517,7 +571,8 @@ public final class ConversationViewModel {
                 stopRecognition()
                 listening = nil
                 if settings.mode == .autoAlternate {
-                    notice = "太久沒有聲音，已暫停自動輪流。"
+                    notice = Self.autoPausedNotice
+                    noSpeechStreakStart = nil
                     currentTurn = nil
                 } else {
                     notice = AppError.noSpeechDetected.userMessage
@@ -552,12 +607,15 @@ public final class ConversationViewModel {
         }
         recognitionActive = false
         listening = nil
-        if let finalText = context.finalText { return finalText }
+        let speechStart = context.firstChange ?? context.start
+        if let finalText = context.finalText {
+            return Heard(text: finalText, start: context.start, speechStart: speechStart)
+        }
         if let error = context.streamError, context.lastPartial.isEmpty {
             fail(Self.recognitionError(error, localeID: localeID))
             return nil
         }
-        return context.lastPartial
+        return Heard(text: context.lastPartial, start: context.start, speechStart: speechStart)
     }
 
     private func nextDeadline(for context: ListeningContext, detector: UtteranceEndDetector) -> Duration {
@@ -689,12 +747,17 @@ public final class ConversationViewModel {
             notice = direction.speaker == .user
                 ? "這台 iPhone 沒有 \(languageID) 的語音，請讓對方看畫面上的文字。"
                 : "這台 iPhone 沒有 \(languageID) 的語音，請看畫面上的翻譯文字。"
-            if case .readyToPlayForPartner = state {
-                move(to: .readyToPlayForPartner(countdown: nil))
-            } else if state != .idle {
-                move(to: .idle)
-            }
             finishTurn()
+            if case .readyToPlayForPartner = state {
+                // 待播句要留在畫面上讓對方看；記住的下一句不保留，避免之後突然開麥克風。
+                move(to: .readyToPlayForPartner(countdown: nil))
+                queuedSpeaker = nil
+            } else {
+                if state != .idle { move(to: .idle) }
+                // 沒有語音也照常接下一句（審查 R1）：使用者指定的、自動輪流的或重播前的那一方。
+                continueAfterPlayback(direction: direction, continuesConversation: continuesConversation,
+                                      resumeSpeaker: resumeSpeaker)
+            }
             return
         }
         let overridden = overrideOutputIfNeeded(for: direction)
@@ -710,8 +773,15 @@ public final class ConversationViewModel {
         }
         guard !Task.isCancelled else { return }
         lastPlayed = (text: text, languageID: languageID)
+        lastPlayedEnd = sleeper.now
         if state == speakingState { move(to: .idle) }
         finishTurn()
+        continueAfterPlayback(direction: direction, continuesConversation: continuesConversation,
+                              resumeSpeaker: resumeSpeaker)
+    }
+
+    private func continueAfterPlayback(direction: TranslationDirection, continuesConversation: Bool,
+                                       resumeSpeaker: Speaker?) {
         if continuesConversation {
             scheduleNextTurn(after: direction)
         } else if let next = queuedSpeaker ?? resumeSpeaker {
@@ -742,6 +812,7 @@ public final class ConversationViewModel {
     private func scheduleTurn(_ next: Speaker) {
         let sleeper = self.sleeper
         let micGuard = configuration.postPlaybackMicGuard
+        scheduledSpeaker = next
         activeTask = Task { [weak self] in
             do {
                 try await sleeper.sleep(for: micGuard)
@@ -749,6 +820,7 @@ public final class ConversationViewModel {
                 return
             }
             guard !Task.isCancelled, let self, self.state == .idle else { return }
+            self.scheduledSpeaker = nil
             self.startTurn(next)
         }
     }
@@ -842,6 +914,8 @@ public final class ConversationViewModel {
     private func fail(_ error: AppError) {
         logger("error \(error.category)")
         queuedSpeaker = nil
+        currentTurn = nil   // 發生錯誤就結束自動輪流（審查 R7）
+        noSpeechStreakStart = nil
         stopRecognition()
         listening = nil
         partialTranscript = ""
@@ -864,6 +938,7 @@ public final class ConversationViewModel {
     private func cancelCurrentWork() {
         activeTask?.cancel()
         activeTask = nil
+        scheduledSpeaker = nil
         wake()
         stopRecognition()
         listening = nil

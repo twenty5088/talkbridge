@@ -4,10 +4,14 @@ public enum EchoFilter {
     public static func isLikelyEcho(heard: String, played: String, threshold: Double) -> Bool {
         let a = normalized(heard)
         let b = normalized(played)
-        guard !a.isEmpty, !b.isEmpty else { return false }
+        // 太短的話（「謝謝」「OK」）對方很可能真的照說一次，不當成殘響。
+        guard a.count >= minimumCharacters, b.count >= minimumCharacters else { return false }
         let lcs = longestCommonSubsequence(a, b)
         return Double(lcs) / Double(max(a.count, b.count)) >= threshold
     }
+
+    /// 去掉標點後至少要幾個字母／數字才比對。
+    public static let minimumCharacters = 4
 
     static func normalized(_ text: String) -> [Character] {
         text.lowercased().filter { $0.isLetter || $0.isNumber }.map { $0 }

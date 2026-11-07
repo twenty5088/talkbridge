@@ -5,7 +5,7 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T19:45:00+08:00
+- last_active: 2026-11-07T19:44:23+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: v2 計畫 Task 7：整體審查找到 R1–R8，RED 測試 ReviewFixV2Tests.swift 已寫，接著逐項修（設計 specs/2026-11-07-auto-language-design.md 按鈕版）
 - blocked_reason: （無）

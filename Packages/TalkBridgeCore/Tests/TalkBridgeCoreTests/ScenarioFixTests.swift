@@ -278,6 +278,6 @@ final class EchoFilterTests: XCTestCase {
     }
 
     func testDefaultThreshold() {
-        XCTAssertEqual(ConversationConfiguration.standard.echoSimilarityThreshold, 0.8)
+        XCTAssertEqual(ConversationConfiguration.standard.echoSimilarityThreshold, 0.9)
     }
 }

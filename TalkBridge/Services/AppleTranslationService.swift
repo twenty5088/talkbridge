@@ -3,18 +3,24 @@ import Observation
 import TalkBridgeCore
 import Translation
 
+/// TranslationSession 不是 Sendable。整個 App 只在 TranslationHostView 的 translationTask 裡
+/// 用同一個 Task 依序使用它，從不並行，所以用這個盒子把它帶進非主執行緒的處理函式。
+struct TranslationSessionBox: @unchecked Sendable {
+    let session: TranslationSession
+}
+
 /// Apple Translation framework 的集中整合（原需求 §八-10）。
 ///
 /// Translation framework 只能透過 SwiftUI 的 `.translationTask` 取得 TranslationSession，
 /// 所以整個 App 只有 `TranslationHostView` 一處掛 `.translationTask`，由這個服務驅動：
 /// 1. ViewModel 呼叫 translate／prepare → 工作排進佇列，設定（或 invalidate）configuration。
-/// 2. SwiftUI 因 configuration 變化重新執行 translationTask，把 session 交給 `run(_:)`。
-/// 3. `run` 依序處理佇列裡同一語言對的工作，把結果交回各自的 continuation。
+/// 2. SwiftUI 因 configuration 變化重新執行 translationTask，呼叫 `process(_:service:)`。
+/// 3. `process` 依序取出同一語言對的工作，把結果交回各自的 continuation。
 @MainActor
 @Observable
 final class AppleTranslationService: TranslationService {
-    private struct Job {
-        enum Kind {
+    struct Job: Sendable {
+        enum Kind: Sendable {
             case translate(String)
             case prepare
         }
@@ -62,26 +68,32 @@ final class AppleTranslationService: TranslationService {
         }
     }
 
-    /// 由 TranslationHostView 的 translationTask 呼叫。
-    func run(_ session: TranslationSession) async {
+    /// 取出下一個屬於目前語言對的工作；語言對已經換掉的舊工作直接作廢。
+    func nextJob() -> Job? {
         while !jobs.isEmpty {
             let job = jobs.removeFirst()
-            guard let pair = configuredPair, pair.source == job.source, pair.target == job.target else {
-                // 語言對已經換了（例如使用者換語言），這個工作作廢。
-                job.continuation.resume(throwing: AppError.translationFailed)
-                continue
+            if let pair = configuredPair, pair.source == job.source, pair.target == job.target {
+                return job
             }
+            job.continuation.resume(throwing: AppError.translationFailed)
+        }
+        return nil
+    }
+
+    /// 由 TranslationHostView 的 translationTask 呼叫。在同一個 Task 裡依序使用 session。
+    nonisolated static func process(_ box: TranslationSessionBox, service: AppleTranslationService) async {
+        while let job = await service.nextJob() {
             switch job.kind {
             case .prepare:
                 do {
-                    try await session.prepareTranslation()
+                    try await box.session.prepareTranslation()
                     job.continuation.resume(returning: "")
                 } catch {
                     job.continuation.resume(throwing: AppError.modelDownloadCancelled)
                 }
             case .translate(let text):
                 do {
-                    let response = try await session.translate(text)
+                    let response = try await box.session.translate(text)
                     job.continuation.resume(returning: response.targetText)
                 } catch {
                     job.continuation.resume(throwing: AppError.translationFailed)

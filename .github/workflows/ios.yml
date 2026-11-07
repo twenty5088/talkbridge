@@ -56,13 +56,13 @@ jobs:
           cd Packages/TalkBridgeCore
           xcodebuild -list
           xcodebuild test -scheme TalkBridgeCore-Package -destination "$DEST" \
-            -derivedDataPath ../../DerivedData-core -resultBundlePath ../../CoreTests.xcresult 2>&1 | tee ../../core-build.log | tail -40
+            -derivedDataPath ../../DerivedData-core -resultBundlePath ../../CoreTests.xcresult 2>&1 | tee ../../core-build.log | tail -40             || { grep -E "error:" ../../core-build.log | sort -u | head -60; exit 1; }
 
       - name: App build and UI tests
         run: |
           set -o pipefail
           xcodebuild test -project TalkBridge.xcodeproj -scheme TalkBridge -destination "$DEST" \
-            -derivedDataPath DerivedData -resultBundlePath UITests.xcresult 2>&1 | tee build.log | tail -60
+            -derivedDataPath DerivedData -resultBundlePath UITests.xcresult 2>&1 | tee build.log | tail -60             || { echo "---- 編譯錯誤 ----"; grep -E "error:" build.log | sort -u | head -60; exit 1; }
 
       - name: Test summaries
         if: always()

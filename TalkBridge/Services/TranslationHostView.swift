@@ -10,7 +10,8 @@ struct TranslationHostView: View {
         Color.clear
             .frame(width: 0, height: 0)
             .translationTask(service.configuration) { session in
-                await service.run(session)
+                let box = TranslationSessionBox(session: session)
+                await AppleTranslationService.process(box, service: service)
             }
             .accessibilityHidden(true)
     }

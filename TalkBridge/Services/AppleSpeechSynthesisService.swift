@@ -63,7 +63,7 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
         current.continuation.resume(with: result)
     }
 
-    /// 使用者挑的聲音還在就用它；否則挑品質最好的（高品質／加強版優先），
+    /// 使用者挑的聲音還在就用它；否則挑品質最好的（高品質／增強音質優先），
     /// 找不到該地區時改用同語言其他地區（例如 en-US 找不到時用 en-GB）。規則在 TalkBridgeCore 的 VoiceSelector。
     private func bestVoice(for languageID: String) -> AVSpeechSynthesisVoice? {
         let voices = AVSpeechSynthesisVoice.speechVoices()

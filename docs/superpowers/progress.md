@@ -5,7 +5,7 @@
 - status: DONE
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-08T07:34:41+08:00
+- last_active: 2026-11-08T07:40:05+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: 中文語言名稱＋自動挑最好的聲音＋自己挑聲音完成（ipa 在 dist/）
 - blocked_reason: （無）
@@ -103,4 +103,4 @@
 - 2026-11-08: Ruling: 對話進行中不能試聽（▶ 變灰）— 麥克風可能開著，試聽聲會被當成有人說話 — 若錯：要先按全部停止才能試聽。
 - 2026-11-08: Ruling: 試聽沿用對話的音訊設定（抽出 AppleAudioSessionService.configureCategory），只在離開選聲音畫面時關掉自己開的工作階段 — 靜音開關下也聽得到、不干擾對話 — 若錯：試聽後別的 App 音樂要手動再播。
 - 2026-11-08: Ruling: 選聲音畫面的 UI 測試與畫面同一次提交（非先 RED）— 核心規則已 TDD，畫面只是接線；UI 測試只驗預設「自動」與畫面可進入 — 若錯：畫面細節靠實機測試第 29 項。
-
+- 2026-11-08: 品質標籤「加強版」改「增強音質」（與 iOS 聲音設定用詞一致，Kevin 實機看到）；設定頁與 README 註明 Siri 聲音不開放給第三方 App — RED 1 失敗→GREEN。

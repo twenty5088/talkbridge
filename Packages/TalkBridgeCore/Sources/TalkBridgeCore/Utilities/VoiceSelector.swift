@@ -7,7 +7,7 @@ public enum VoiceQuality: Int, Comparable, Sendable {
     public var label: String {
         switch self {
         case .premium: "高品質"
-        case .enhanced: "加強版"
+        case .enhanced: "增強音質"
         case .standard: "一般"
         }
     }

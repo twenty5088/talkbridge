@@ -254,4 +254,23 @@ final class TalkBridgeUITests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS %@", "3 秒")).firstMatch
         XCTAssertTrue(chosen.waitForExistence(timeout: 5), "選了 3 秒要顯示出來")
     }
+
+    // v2：倒數中按「我說中文」＝記住下一句，這句照常播完後再聽中文（不中斷）
+    @MainActor
+    func testQueuedNextSpeakerDuringCountdownPlaysThenListensChineseAgain() {
+        let app = launch()
+        app.buttons[AccessibilityID.userButton].tap()
+        waitForStatus(app, "準備播放給對方", timeout: 15)
+        let micHint = element(app, AccessibilityID.microphoneHint)
+        XCTAssertTrue(micHint.waitForExistence(timeout: 5))
+        XCTAssertTrue(micHint.label.contains("請稍等，麥克風已關閉"), "倒數時要提示麥克風關閉，目前是「\(micHint.label)」")
+        app.buttons[AccessibilityID.userButton].tap()
+        let queued = element(app, AccessibilityID.queuedHint)
+        XCTAssertTrue(queued.waitForExistence(timeout: 5))
+        XCTAssertTrue(queued.label.contains("下一句：我說中文"))
+        waitForStatus(app, "正在播放", timeout: 15)
+        // 手動模式本來播完就停；記住了下一句，所以會再聽一句中文並進入下一次待播。
+        waitForStatus(app, "準備播放給對方", timeout: 20)
+        XCTAssertFalse(element(app, AccessibilityID.queuedHint).exists, "用掉後不再顯示")
+    }
 }

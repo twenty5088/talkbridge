@@ -54,6 +54,13 @@ struct ContentView: View {
         .onChange(of: environment.settings.settings) { _, newValue in
             conversation.settings = newValue
         }
+        // 對話進行中不讓螢幕自動鎖定；鎖定會讓 App 進背景而中斷對話（v2 設計 P3）。
+        .onChange(of: conversation.keepsScreenAwake, initial: true) { _, keepAwake in
+            UIApplication.shared.isIdleTimerDisabled = keepAwake
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
     }
 
     private var modeBinding: Binding<ConversationMode> {

@@ -16,6 +16,19 @@ struct StatusView: View {
                     .accessibilityIdentifier(AccessibilityID.statusText)
                 Spacer(minLength: 0)
             }
+            if let hint = conversation.microphoneHint {
+                Label(hint, systemImage: conversation.state.isMicrophoneActive ? "mic.circle.fill" : "mic.slash.circle")
+                    .font(.headline)
+                    .foregroundStyle(conversation.state.isMicrophoneActive ? Color.green : Color.secondary)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier(AccessibilityID.microphoneHint)
+            }
+            if let queued = conversation.queuedHint {
+                Label(queued, systemImage: "arrow.uturn.right.circle.fill")
+                    .font(.headline)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier(AccessibilityID.queuedHint)
+            }
             if let turn = conversation.currentTurn {
                 Text("現在輪到：\(turn == .partner ? "對方" : "我")")
                     .font(.headline)

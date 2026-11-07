@@ -89,7 +89,9 @@ struct ConversationView: View {
             }
             // 新的在上面。
             ForEach(Array(conversation.entries.enumerated().reversed()), id: \.element.id) { index, entry in
-                ConversationCardView(entry: entry, index: index, canReplay: !conversation.state.isBusy) {
+                // 聆聽中也可以重播：會先關麥克風，播完再繼續聽（v2 設計 P5）。
+                ConversationCardView(entry: entry, index: index,
+                                     canReplay: !conversation.state.isBusy || conversation.state.isMicrophoneActive) {
                     conversation.replay(entry.id)
                 }
             }

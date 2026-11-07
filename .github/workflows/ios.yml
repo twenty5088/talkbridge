@@ -12,6 +12,11 @@ on:
       - ".github/workflows/ios.yml"
   workflow_dispatch:
 
+# 連續推送時只保留最新一次，避免雲端 Mac 排隊。
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-test:
     runs-on: macos-15

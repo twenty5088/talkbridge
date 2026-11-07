@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T09:09:05+08:00
+- last_active: 2026-11-07T09:10:22+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: Task 6 Step 2（RED）
+- current: Task 7 Step 1（寫測試）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -17,7 +17,7 @@
 - [x] Task 3: 錯誤對照與音訊路由對照
 - [x] Task 4: Service protocols、Sleeper 與假服務
 - [x] Task 5: 狀態機
-- [ ] Task 6: 一句話結束偵測
+- [x] Task 6: 一句話結束偵測
 - [ ] Task 7: ViewModel 模式 A
 - [ ] Task 8: ViewModel 模式 B
 - [ ] Task 9: 並發、權限、語言準備、中斷
@@ -42,3 +42,8 @@
 - Task 4: complete（commit 0ddb9ad；core-tests #10 24/24 pass）。Fakes 加了 emit()/setMode()/setReadiness() 等測試輔助。
 - Ruling: 狀態機允許 readyToPlayForPartner → listeningToUser — Task 8「重新錄音」需要從待播直接重錄 — 若錯：多一條轉換。
 - Task 5: complete（commit 9f452ab；core-tests #12 34/34 pass）
+- Task 6: complete（commit 6ad241d；core-tests #14 39/39 pass）
+- Ruling: Sleeper 協定加 `var now: Duration`（TaskSleeper 用 ContinuousClock、ManualSleeper 用虛擬時間）— 停頓判斷要量「距上次結果多久」，測試要能精準控制 — 若錯：多一個屬性。
+- Ruling: ViewModel 的 now 參數改成 `@MainActor () -> Date`（不是 @Sendable）— 測試要用遞增時間 — 若錯：無。
+- Ruling: 狀態機加 idle→speakingChinese、idle→speakingPartnerLanguage（重播）— 重播只播放不開麥克風 — 若錯：多兩條轉換。
+- Ruling: ios.yml 加 concurrency cancel-in-progress — 每次推送都觸發 macOS，排隊會拖慢驗證 — 若錯：中間版本不會有 iOS 結果（Linux 仍每版都有）。

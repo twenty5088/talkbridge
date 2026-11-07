@@ -54,6 +54,12 @@ final class ConversationStateMachineTests: XCTestCase {
         }
     }
 
+    func testReplayFromIdleAllowed() {
+        // 重播只播放、不開麥克風，不違反「播放中不聆聽」。
+        XCTAssertTrue(ConversationStateMachine.isAllowed(from: .idle, to: .speakingChinese))
+        XCTAssertTrue(ConversationStateMachine.isAllowed(from: .idle, to: .speakingPartnerLanguage))
+    }
+
     func testRejectsSkippingTranslation() {
         XCTAssertFalse(ConversationStateMachine.isAllowed(from: .transcribingPartner, to: .speakingChinese))
         XCTAssertFalse(ConversationStateMachine.isAllowed(from: .transcribingChinese, to: .readyToPlayForPartner(countdown: 2)))

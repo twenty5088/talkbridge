@@ -118,11 +118,15 @@ final class TalkBridgeUITests: XCTestCase {
         cancel.tap()
 
         // 編輯
+        let edited = "Where is the station, please?"
         app.buttons[AccessibilityID.editTranslationButton].tap()
         let editor = app.textFields[AccessibilityID.translationEditor]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
-        editor.tap()
-        editor.typeText(" please\n")   // 換行＝完成，收起鍵盤
+        // 游標點到最右邊、刪掉原文，輸入整句新的翻譯；換行＝完成，收起鍵盤。
+        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.5)).tap()
+        let current = editor.value as? String ?? ""
+        editor.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
+        editor.typeText(edited + "\n")
 
         // 播放 → 停止 → 重播
         app.buttons[AccessibilityID.playButton].tap()
@@ -132,7 +136,7 @@ final class TalkBridgeUITests: XCTestCase {
         app.buttons[AccessibilityID.replayButton].tap()
         waitForStatus(app, "正在播放")
         waitForStatus(app, "等待中")
-        XCTAssertTrue(element(app, AccessibilityID.cardTranslation(0)).label.hasSuffix("please"))
+        XCTAssertEqual(element(app, AccessibilityID.cardTranslation(0)).label, "翻譯：\(edited)")
     }
 
     // 7

@@ -5,7 +5,7 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T10:40:20+08:00
+- last_active: 2026-11-07T10:52:32+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: Task 12/13（畫面＋UI 測試，一起推送）
 - blocked_reason: （無）
@@ -64,3 +64,4 @@
 - Ruling: UI 測試假模式的倒數設成 5 秒（正式版仍是 2 秒）— 讓 UI 測試來得及按「取消倒數」— 若錯：無。
 - Task 12/13 第一輪：UI 10/13。修正：待播按鈕改 LazyVGrid 並移到狀態正下方（ViewThatFits 可能讓按鈕在結構裡出現兩份／被底部列擋住）、給對方看畫面外框加 .contain（識別名稱會蓋掉子按鈕）、編輯框改單行並以「完成」收鍵盤。
 - Task 12/13 第二輪：UI 11/13。修正：提示 Label 合併成單一無障礙元素；UI 測試假語音播放改 4 秒（1.5 秒來不及按停止）。
+- Task 12/13 第三輪：UI 12/13，只剩編輯測試假設游標在結尾；改成清空後輸入整句並比對完全相同（更嚴格）。

@@ -2,12 +2,12 @@
 
 只有正在做事的那個 Claude session 可以改這個檔案。每做完一個步驟就更新，並且 commit。
 
-- status: DONE
+- status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T16:08:37+08:00
+- last_active: 2026-11-07T16:39:25+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: 完成（等 Kevin 實機測試）
+- current: v2 計畫 docs/superpowers/plans/2026-11-07-v2-next-speaker.md Task 1（設計 specs/2026-11-07-auto-language-design.md 按鈕版）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -78,3 +78,5 @@
 - Ruling: ConversationConfiguration.silenceTimeout 改為 Duration?，nil＝依使用者設定；只有 UI 測試假情境固定 0.3 秒 — 讓 UI 測試維持快速 — 若錯：假情境不反映使用者設定，只影響測試。
 - Ruling: AppSettings 自訂 init(from:) 用 decodeIfPresent — 舊版存下的設定少了新欄位時不會整份被重置 — 若錯：升級後設定被重置。
 - 停頓設定驗證：ios #37（commit 5abbb3f）Core 119/119、UI 14/14（新增 testPauseSettingDefaultsToTwoSecondsAndCanChange）、warnings 0、ipa v37 下載到 dist/。
+- 2026-11-07 v2 改方向（Kevin）：不做自動判斷，改按鈕指定下一句；實驗畫面已 revert（e881b22）。計畫 plans/2026-11-07-v2-next-speaker.md 共 7 個 Task。
+- Ruling: v2 設計改版後未再跑 builder check — Kevin 已在對話中逐條確認按鈕行為並說開始修改 — 若錯：實作中才發現缺漏，照計畫 Ruling 處理。

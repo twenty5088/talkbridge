@@ -2,13 +2,18 @@
 
 雙向、輪流說話的即時語音翻譯 iPhone App。對方說外語時，太太從耳機（或手機喇叭）聽到繁體中文；太太說中文時，外語從手機喇叭播給對方聽，螢幕同時顯示大字。
 
-> 文件：設計 `docs/superpowers/specs/2026-11-07-talkbridge-design.md`、計畫 `docs/superpowers/plans/2026-11-07-talkbridge.md`、原始需求 `docs/original-requirements.md`、實機測試 `docs/PhysicalDeviceTestPlan.md`。
+> 文件：設計 `docs/superpowers/specs/2026-11-07-talkbridge-design.md`（v2 變更：`2026-11-07-auto-language-design.md`）、計畫 `docs/superpowers/plans/2026-11-07-talkbridge.md`（v2：`2026-11-07-v2-next-speaker.md`）、原始需求 `docs/original-requirements.md`、實機測試 `docs/PhysicalDeviceTestPlan.md`。
 
 ## 1. App 目標
 
 - 對方說英文、印尼文、泰文、日文或韓文 → 辨識 → 翻成繁體中文 → 用中文語音念出。
 - 太太說中文 → 辨識 → 翻成對方語言 → 倒數 2 秒後用該語言語音播出（可取消、編輯、重播、重新錄音）。
 - 一人說完、另一人再說的半雙工流程；不宣稱同步口譯或零延遲。
+- **連續說好幾句**：翻譯、倒數或播放中按「我說中文」或「對方說話」，不會打斷這一句，App 會記住「下一句換誰說」（畫面顯示「下一句：…」），這句播完再聽指定的人。
+- 狀態區顯示麥克風狀態：「現在可以說話：中文／English…」或「請稍等，麥克風已關閉」。
+- 對話進行中螢幕不會自動鎖定（回到待機後恢復）。
+- 自動輪流：聽到雜音或喇叭殘響會自動忽略、繼續聽；60 秒沒人說話才暫停；聆聽中也能按卡片重播。
+- 翻譯失敗按「再試一次」會用同一句文字重新翻譯，不用重講。
 - 所有處理都用 Apple 系統框架，不用第三方雲端服務，沒有 API Key。
 
 ## 2. 系統需求
@@ -160,7 +165,8 @@ UI 測試用 launch argument 切換假服務情境（只在 Debug 版有效）�
 
 - **不宣稱完全離線**：能不能離線取決於語言資料是否已下載，以及 Apple 對該語言是否支援裝置端辨識。
 - 一般藍牙耳機下「外語暫時改從喇叭播」尚未實機驗證。
-- 自動輪流是固定交替，不會自動判斷誰在說話；吵雜環境下停頓判斷可能較慢（最長 30 秒一定結束，也可隨時按鈕結束）。
+- 不會自動判斷誰在說話（Kevin 2026-11-07 決定改由按鈕指定下一句）；吵雜環境下停頓判斷可能較慢（開始說話後最長 30 秒一定結束，也可隨時按鈕結束）。
+- 播放時麥克風關著，這段時間說的話不會被收到（畫面會提示）。
 - `TranslationSession` 不是 Sendable，App 以單一 Task 依序使用並用 `@unchecked Sendable` 的盒子傳遞（理由見程式註解）。
 - 免費 Apple ID 簽章 7 天到期。
 
@@ -168,7 +174,7 @@ UI 測試用 launch argument 切換假服務情境（只在 Debug 版有效）�
 
 - 實機驗證後，依結果決定耳機模式的預設輸出方式。
 - 評估 iOS 26 的 `SpeechAnalyzer`／`SpeechTranscriber`（新的裝置端辨識 API），比較五種語言的離線支援度。
-- 自動判斷說話語言（目前固定交替）。
+- 實機確認喇叭殘響過濾的門檻（`echoSimilarityThreshold` 0.8）。
 - 可選的對話匯出（目前刻意不保存）。
 
 ## 17. 實際執行過的 build／test 命令

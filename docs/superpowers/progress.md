@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T16:53:36+08:00
+- last_active: 2026-11-07T19:45:00+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: v2 計畫 docs/superpowers/plans/2026-11-07-v2-next-speaker.md Task 1（設計 specs/2026-11-07-auto-language-design.md 按鈕版）
+- current: v2 計畫 Task 7：整體審查找到 R1–R8，RED 測試 ReviewFixV2Tests.swift 已寫，接著逐項修（設計 specs/2026-11-07-auto-language-design.md 按鈕版）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -86,3 +86,5 @@
 - Task 2: Ruling: 單句最長 30 秒改成從第一次聽到文字起算、且沒人說話時不適用 — 否則自動輪流安靜等待會在 30 秒被誤判成「已達單句最長」— 若錯：對方講超過 30 秒時切段時機略晚。（測試 testMaxDurationOnlyCountsAfterSpeechStarts）
 - Task 6: Ruling: P9 自動捲動不做 — 對話紀錄本來就是最新一張在最上面、緊接在狀態區下方 — 若錯：Kevin 實機覺得還要捲。
 - Task 6: Ruling: 卡片重播鈕在聆聽中改為可按（ConversationView canReplay），配合 P5。
+- Task 1–6: complete（commits 6238762..0ee6205）。
+- Task 7: README／PhysicalDeviceTestPlan（25–28）更新；v2 整體審查找到 R1–R8（記住的下一句殘留、保護間隔內中斷仍開麥克風、準備中重播、殘響過濾誤丟、雜音無限重聽、換語言用舊語言重試、錯誤沒結束自動輪流、待按播放沒提示），RED 測試寫在 ReviewFixV2Tests.swift。

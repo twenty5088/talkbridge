@@ -125,7 +125,8 @@ public final class ConversationViewModel {
         lastError = nil
         let speakingState: ConversationState = entry.direction.speaker == .partner ? .speakingChinese : .speakingPartnerLanguage
         activeTask = Task { [weak self] in
-            await self?.speak(entry.translation, direction: entry.direction, as: speakingState)
+            await self?.speak(entry.translation, direction: entry.direction, as: speakingState,
+                              continuesConversation: false)
         }
     }
 
@@ -263,6 +264,7 @@ public final class ConversationViewModel {
         partialTranscript = ""
         if state != .idle { move(to: .idle) }
         activeTurn = speaker
+        currentTurn = settings.mode == .autoAlternate ? speaker : nil
         let direction = TranslationDirection.from(speaker: speaker, partner: partnerLanguage)
         activeTask = Task { [weak self] in
             await self?.runTurn(direction)
@@ -401,7 +403,12 @@ public final class ConversationViewModel {
             case .endByNoSpeech:
                 stopRecognition()
                 listening = nil
-                notice = AppError.noSpeechDetected.userMessage
+                if settings.mode == .autoAlternate {
+                    notice = "太久沒有聲音，已暫停自動輪流。"
+                    currentTurn = nil
+                } else {
+                    notice = AppError.noSpeechDetected.userMessage
+                }
                 move(to: .idle)
                 finishTurn()
                 return nil
@@ -518,7 +525,9 @@ public final class ConversationViewModel {
         await speak(text, direction: pending.direction, as: .speakingPartnerLanguage)
     }
 
-    private func speak(_ text: String, direction: TranslationDirection, as speakingState: ConversationState) async {
+    /// - Parameter continuesConversation: 播完後是否依設定自動換下一個人說（重播時為 false）。
+    private func speak(_ text: String, direction: TranslationDirection, as speakingState: ConversationState,
+                       continuesConversation: Bool = true) async {
         let languageID = LocaleMapping.voiceLanguageID(for: direction)
         switch synthesis.voiceMatch(forLanguageID: languageID) {
         case .exact:
@@ -551,6 +560,32 @@ public final class ConversationViewModel {
         guard !Task.isCancelled else { return }
         if state == speakingState { move(to: .idle) }
         finishTurn()
+        if continuesConversation { scheduleNextTurn(after: direction) }
+    }
+
+    /// 自動輪流：換另一方。手動模式且開了「對方說完繼續聆聽」：再聽對方。
+    /// 一律先等 postPlaybackMicGuard，避免把喇叭殘響收進麥克風。
+    private func scheduleNextTurn(after direction: TranslationDirection) {
+        let next: Speaker
+        switch settings.mode {
+        case .autoAlternate:
+            next = direction.speaker.other
+            currentTurn = next
+        case .manual:
+            guard settings.continueListeningAfterPartner, direction.speaker == .partner else { return }
+            next = .partner
+        }
+        let sleeper = self.sleeper
+        let micGuard = configuration.postPlaybackMicGuard
+        activeTask = Task { [weak self] in
+            do {
+                try await sleeper.sleep(for: micGuard)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self, self.state == .idle else { return }
+            self.startTurn(next)
+        }
     }
 
     /// 外語要給對方聽：有耳機時暫時切到手機喇叭；「一律用手機喇叭」時兩個方向都切。

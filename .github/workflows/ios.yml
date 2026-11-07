@@ -40,7 +40,10 @@ jobs:
           xcodegen generate
 
       - name: Pick simulator
-        run: echo "DEST=$(scripts/pick_simulator.sh)" >> "$GITHUB_ENV"
+        run: |
+          DEST=$(bash scripts/pick_simulator.sh)
+          if [ -z "$DEST" ]; then echo "::error::沒挑到模擬器"; exit 1; fi
+          echo "DEST=$DEST" | tee -a "$GITHUB_ENV"
 
       - name: Core unit tests on iOS Simulator
         run: |

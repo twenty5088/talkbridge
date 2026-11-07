@@ -14,6 +14,8 @@ public struct ConversationConfiguration: Sendable, Equatable {
     public var finalResultTimeout: Duration = .seconds(2)
     /// 去掉空白與標點後至少要有幾個字才算有效語句。
     public var minimumMeaningfulCharacters: Int = 1
+    /// 翻譯最長等待時間；逾時顯示「翻譯沒有成功」並可再試（避免永遠停在「正在翻譯」）。
+    public var translationTimeout: Duration = .seconds(20)
 
     public init() {}
 

@@ -2,12 +2,12 @@
 
 只有正在做事的那個 Claude session 可以改這個檔案。每做完一個步驟就更新，並且 commit。
 
-- status: IN_PROGRESS
+- status: DONE
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T20:04:28+08:00
+- last_active: 2026-11-07T20:18:49+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: v2 計畫 Task 7：R1–R8 已修、core 綠；接著 ios CI、下載 ipa、更新 final-report、status DONE
+- current: v2 全部完成（ipa v49 在 dist/）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -95,3 +95,4 @@
 - Final(v2): Ruling: 待機時（準備中或保護間隔內）進背景／來電／換語言改為 stopAll（不顯示錯誤畫面）— 沒有正在進行的一句，不需要錯誤畫面 — 若錯：無。
 - Final(v2): ios #53：Core 166/166、UI 14/15、warnings 0。失敗 testErrorStateHasRecoveryButton：根因是 P7 之後「再試一次」會用同一句重翻，而假情境 translationFailure 每次都失敗→又回到「發生錯誤」。
 - Final(v2): Ruling: 假翻譯加 translateErrorOnce，translationFailure 情境只失敗第一次；UI 測試改成驗證重試後「正在播放」→「等待中」（比原本只看等待中更嚴格）— 行為改變是 P7 本意 — 若錯：無。
+- Final(v2): ios #49（commit b0fca46）Core 167/167、UI 15/15、warnings 0；ipa v49 下載到 dist/；final-report 更新；status DONE，自動續做排程停用。

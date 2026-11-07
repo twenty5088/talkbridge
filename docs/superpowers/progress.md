@@ -5,9 +5,9 @@
 - status: DONE
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-08T07:18:21+08:00
+- last_active: 2026-11-08T07:34:41+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: v2 全部完成（ipa v49 在 dist/）
+- current: 中文語言名稱＋自動挑最好的聲音＋自己挑聲音完成（ipa 在 dist/）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -96,3 +96,11 @@
 - Final(v2): ios #53：Core 166/166、UI 14/15、warnings 0。失敗 testErrorStateHasRecoveryButton：根因是 P7 之後「再試一次」會用同一句重翻，而假情境 translationFailure 每次都失敗→又回到「發生錯誤」。
 - Final(v2): Ruling: 假翻譯加 translateErrorOnce，translationFailure 情境只失敗第一次；UI 測試改成驗證重試後「正在播放」→「等待中」（比原本只看等待中更嚴格）— 行為改變是 P7 本意 — 若錯：無。
 - Final(v2): ios #49（commit b0fca46）Core 167/167、UI 15/15、warnings 0；ipa v49 下載到 dist/；final-report 更新；status DONE，自動續做排程停用。
+- 2026-11-08: 對方語言名稱改中文（英文／印尼文／泰文／日文／韓文）— Kevin 要求；RED 6 失敗→GREEN；ios #52 Core 167/167、UI 15/15、warnings 0。
+- 2026-11-08: 自動挑最好的聲音（高品質＞加強版＞一般，略過趣味語音，本地區優先）— VoiceSelectorTests RED 3 失敗→GREEN。
+- 2026-11-08: 自己挑聲音（Kevin 核准設計）— VoiceChoiceTests RED 10 失敗→GREEN，core 184/184。
+- 2026-11-08: Ruling: 設定存「語音語言代碼→聲音 identifier」，挑的聲音被刪或語言不符就退回自動 — 不會沒聲音 — 若錯：使用者以為選了卻用自動，設定頁那列會顯示「自動」可看出。
+- 2026-11-08: Ruling: 對話進行中不能試聽（▶ 變灰）— 麥克風可能開著，試聽聲會被當成有人說話 — 若錯：要先按全部停止才能試聽。
+- 2026-11-08: Ruling: 試聽沿用對話的音訊設定（抽出 AppleAudioSessionService.configureCategory），只在離開選聲音畫面時關掉自己開的工作階段 — 靜音開關下也聽得到、不干擾對話 — 若錯：試聽後別的 App 音樂要手動再播。
+- 2026-11-08: Ruling: 選聲音畫面的 UI 測試與畫面同一次提交（非先 RED）— 核心規則已 TDD，畫面只是接線；UI 測試只驗預設「自動」與畫面可進入 — 若錯：畫面細節靠實機測試第 29 項。
+

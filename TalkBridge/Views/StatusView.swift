@@ -29,6 +29,7 @@ struct StatusView: View {
             if let notice = conversation.notice {
                 Label(notice, systemImage: "info.circle")
                     .font(.callout)
+                    .accessibilityElement(children: .combine)   // 圖示＋文字合成一個元素
                     .accessibilityIdentifier(AccessibilityID.noticeView)
             }
         }

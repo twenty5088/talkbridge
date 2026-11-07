@@ -24,7 +24,7 @@ public enum FakeScenario: String, CaseIterable, Sendable {
             log: log,
             readiness: self == .languageNotReady ? .needsDownload : .installed,
             translateError: self == .translationFailure ? AppError.translationFailed : nil)
-        let synthesis = FakeSpeechSynthesisService(log: log, autoCompleteAfter: .milliseconds(1500), sleeper: sleeper)
+        let synthesis = FakeSpeechSynthesisService(log: log, autoCompleteAfter: .seconds(4), sleeper: sleeper)
         let bluetooth = AudioRouteInfo(kind: .bluetooth, portName: "Sample Buds")
         let audio = self == .speakerOverrideFails
             ? FakeAudioSessionService(log: log, route: bluetooth, speakerOverrideResult: bluetooth)

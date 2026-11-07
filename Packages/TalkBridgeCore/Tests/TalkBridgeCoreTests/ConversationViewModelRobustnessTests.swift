@@ -71,17 +71,23 @@ final class ConversationViewModelRobustnessTests: XCTestCase {
         XCTAssertFalse(h.synthesis.isSpeaking)
     }
 
-    func testSecondTranslationCancelsFirst() async {
-        let h = Harness(holdTranslations: true)
+    /// v2：翻譯中按另一方不再取消翻譯，而是翻完、播完後才換人（原本是取消第一個翻譯）。
+    func testTapOtherSideWhileTranslatingFinishesFirstThenSwitches() async {
+        let h = Harness(scriptsByLocale: ["zh-TW": [.partial("你好"), .final("你好。")]], holdTranslations: true)
         await startListeningToPartner(h)
         h.vm.partnerButtonTapped()
         await waitUntil("translating") { h.vm.state == .translatingToChinese }
-        h.vm.userButtonTapped()   // 換人說：取消第一個翻譯
-        await waitUntil("listening user") { h.vm.state == .listeningToUser }
+        h.vm.userButtonTapped()
+        XCTAssertEqual(h.vm.state, .translatingToChinese)
+        XCTAssertEqual(h.vm.queuedSpeaker, .user)
         h.translation.releaseTranslations()
-        for _ in 0..<1000 { await Task.yield() }
-        XCTAssertTrue(h.vm.entries.isEmpty)
-        XCTAssertEqual(h.vm.state, .listeningToUser)
+        await waitUntil("speaking chinese") { h.vm.state == .speakingChinese && h.synthesis.isSpeaking }
+        XCTAssertEqual(h.vm.entries.count, 1)
+        h.synthesis.completeCurrent()
+        await waitUntil("idle") { h.vm.state == .idle }
+        await h.sleeper.waitForPendingCount(1)
+        h.sleeper.advance(by: .milliseconds(300))
+        await waitUntil("listening user") { h.vm.state == .listeningToUser }
     }
 
     func testMicrophoneDeniedShowsPermissionState() async {

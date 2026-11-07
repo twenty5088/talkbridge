@@ -189,14 +189,21 @@ final class ConversationViewModelModeBTests: XCTestCase {
         await speakChinese(h)
         h.vm.playForPartner()
         await waitUntil("speaking") { h.vm.state == .speakingPartnerLanguage && h.synthesis.isSpeaking }
-        h.vm.userButtonTapped()
-        XCTAssertEqual(h.vm.state, .idle)
-        h.vm.partnerButtonTapped()   // 停下來後再按才會開始新的一輪
+        // v2：播放中按按鈕不中斷播放，只記住下一句；播放中絕不開麥克風。
+        h.vm.partnerButtonTapped()
+        XCTAssertEqual(h.vm.state, .speakingPartnerLanguage)
+        for _ in 0..<500 { await Task.yield() }
+        XCTAssertEqual(h.log.count(of: "recognition.start(en-US)"), 0, "播放中不開麥克風")
+        h.synthesis.completeCurrent()
+        await waitUntil("idle") { h.vm.state == .idle }
+        await h.sleeper.waitForPendingCount(1)
+        h.sleeper.advance(by: .milliseconds(300))
         await waitUntil("listening partner") { h.vm.state == .listeningToPartner }
         XCTAssertEqual(h.log.count(of: "recognition.start(zh-TW)"), 1)
         XCTAssertEqual(h.log.count(of: "recognition.start(en-US)"), 1)
-        let speakIndex = h.log.entries.firstIndex(of: "synthesis.stop")
+        let speakIndex = h.log.entries.firstIndex(of: "synthesis.speak(en-US)")
         let startIndex = h.log.entries.firstIndex(of: "recognition.start(en-US)")
+        XCTAssertNotNil(speakIndex)
         if let speakIndex, let startIndex { XCTAssertLessThan(speakIndex, startIndex) }
     }
 }

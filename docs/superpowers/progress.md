@@ -5,7 +5,7 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T16:39:25+08:00
+- last_active: 2026-11-07T16:43:48+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: v2 計畫 docs/superpowers/plans/2026-11-07-v2-next-speaker.md Task 1（設計 specs/2026-11-07-auto-language-design.md 按鈕版）
 - blocked_reason: （無）
@@ -80,3 +80,5 @@
 - 停頓設定驗證：ios #37（commit 5abbb3f）Core 119/119、UI 14/14（新增 testPauseSettingDefaultsToTwoSecondsAndCanChange）、warnings 0、ipa v37 下載到 dist/。
 - 2026-11-07 v2 改方向（Kevin）：不做自動判斷，改按鈕指定下一句；實驗畫面已 revert（e881b22）。計畫 plans/2026-11-07-v2-next-speaker.md 共 7 個 Task。
 - Ruling: v2 設計改版後未再跑 builder check — Kevin 已在對話中逐條確認按鈕行為並說開始修改 — 若錯：實作中才發現缺漏，照計畫 Ruling 處理。
+- Task 1: Ruling: 改寫 testNoMicWhileSpeakingPartnerLanguage（播放中按鈕原本＝停止，v2 改為記住下一句；仍驗證播放中不開麥克風）與 testSecondTranslationCancelsFirst→testTapOtherSideWhileTranslatingFinishesFirstThenSwitches（翻譯中按另一方原本＝取消，v2 改為翻完播完再換）— 設計 §2.1 表格 — 若錯：Kevin 想要的是立即中斷。
+- Task 1: Ruling: 待播且沒有倒數（先確認再播／取消倒數／停止播放／沒有語音）時按按鈕＝照舊立刻開始新的一輪，不記住 — 否則沒有語音時會卡在待播、按什麼都只是記住 — 若錯：先確認再播模式下按我說中文會丟掉待播句（原本就是這樣）。

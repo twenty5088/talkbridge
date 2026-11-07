@@ -64,7 +64,7 @@ final class VoiceChoiceTests: XCTestCase {
 
     func testQualityLabels() {
         XCTAssertEqual(VoiceQuality.premium.label, "高品質")
-        XCTAssertEqual(VoiceQuality.enhanced.label, "加強版")
+        XCTAssertEqual(VoiceQuality.enhanced.label, "增強音質")  // 和 iPhone「閱讀與朗讀 → 聲音」的用詞一致
         XCTAssertEqual(VoiceQuality.standard.label, "一般")
     }
 

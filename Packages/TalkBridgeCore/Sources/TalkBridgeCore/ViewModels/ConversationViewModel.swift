@@ -21,6 +21,8 @@ public final class ConversationViewModel {
     public private(set) var route: AudioRouteInfo
     /// 自動輪流時現在輪到誰。
     public private(set) var currentTurn: Speaker?
+    /// 翻譯、倒數或播放中按了按鈕：這句播完後換這一方說（v2 設計 §2）。
+    public private(set) var queuedSpeaker: Speaker?
     public private(set) var lastError: AppError?
     /// 換語言時若正在進行中，先全部停止，避免用舊語言翻譯或播放；
     /// 也清掉「舊語言」的下載與錯誤，回到待機。
@@ -28,6 +30,7 @@ public final class ConversationViewModel {
         didSet {
             guard oldValue != partnerLanguage else { return }
             pendingPreparePair = nil
+            queuedSpeaker = nil
             if state.isBusy {
                 stopAll()
             } else if state == .languageNotReady || state == .error(.languageUnsupported) {
@@ -118,6 +121,7 @@ public final class ConversationViewModel {
         cancelCurrentWork()
         clearPending()
         currentTurn = nil
+        queuedSpeaker = nil
         partialTranscript = ""
         if state != .idle { move(to: .idle) }
     }
@@ -217,6 +221,7 @@ public final class ConversationViewModel {
         guard state.isSpeaking else { return }
         activeTask?.cancel()
         activeTask = nil
+        queuedSpeaker = nil
         synthesis.stop()
         restoreOutput()
         if state == .speakingPartnerLanguage, pendingUtterance != nil {
@@ -260,16 +265,31 @@ public final class ConversationViewModel {
 
     // MARK: 流程
 
+    /// v2 設計 §2.1：聆聽中按同一方＝說完了、按另一方＝改聽另一方；
+    /// 辨識、翻譯、倒數或播放中按＝記住下一句換誰說，不中斷目前這句（以最後按的為準）。
     private func buttonTapped(_ speaker: Speaker) {
-        if state.isSpeaking {
-            stopAll()
+        if state.isMicrophoneActive {
+            if activeTurn == speaker { requestEndOfUtterance() } else { startTurn(speaker) }
             return
         }
-        if activeTurn == speaker {
-            if state.isMicrophoneActive { requestEndOfUtterance() }
-            return   // 正在準備、辨識或翻譯：忽略重複點擊
+        if Self.queuesNextSpeaker(in: state) {
+            queuedSpeaker = speaker
+            return
         }
+        if activeTurn == speaker { return }   // 正在準備（權限、語言檢查）：忽略重複點擊
         startTurn(speaker)
+    }
+
+    private static func queuesNextSpeaker(in state: ConversationState) -> Bool {
+        switch state {
+        case .transcribingPartner, .translatingToChinese, .speakingChinese,
+             .transcribingChinese, .translatingToPartnerLanguage, .speakingPartnerLanguage:
+            true
+        case .readyToPlayForPartner(let countdown):
+            countdown != nil   // 倒數中記住；等使用者自己按播放時（沒有倒數）按＝重新開始，避免卡住
+        default:
+            false
+        }
     }
 
     private func startTurn(_ speaker: Speaker) {
@@ -280,6 +300,7 @@ public final class ConversationViewModel {
         partialTranscript = ""
         if state != .idle { move(to: .idle) }
         activeTurn = speaker
+        queuedSpeaker = nil
         currentTurn = settings.mode == .autoAlternate ? speaker : nil
         let direction = TranslationDirection.from(speaker: speaker, partner: partnerLanguage)
         activeTask = Task { [weak self] in
@@ -618,14 +639,18 @@ public final class ConversationViewModel {
     /// 一律先等 postPlaybackMicGuard，避免把喇叭殘響收進麥克風。
     private func scheduleNextTurn(after direction: TranslationDirection) {
         let next: Speaker
-        switch settings.mode {
-        case .autoAlternate:
-            next = direction.speaker.other
-            currentTurn = next
-        case .manual:
-            guard settings.continueListeningAfterPartner, direction.speaker == .partner else { return }
-            next = .partner
+        if let queued = queuedSpeaker {
+            next = queued   // 使用者按了按鈕指定下一句（兩種模式都適用）
+        } else {
+            switch settings.mode {
+            case .autoAlternate:
+                next = direction.speaker.other
+            case .manual:
+                guard settings.continueListeningAfterPartner, direction.speaker == .partner else { return }
+                next = .partner
+            }
         }
+        if settings.mode == .autoAlternate { currentTurn = next }
         let sleeper = self.sleeper
         let micGuard = configuration.postPlaybackMicGuard
         activeTask = Task { [weak self] in
@@ -727,6 +752,7 @@ public final class ConversationViewModel {
 
     private func fail(_ error: AppError) {
         logger("error \(error.category)")
+        queuedSpeaker = nil
         stopRecognition()
         listening = nil
         partialTranscript = ""

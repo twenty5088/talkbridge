@@ -68,7 +68,13 @@ public final class ManualSleeper: Sleeper, Sendable {
     }
 
     /// 等到至少有 count 個 sleep 在等待（讓測試知道被測程式已經走到等待點）。
-    public func waitForPendingCount(_ count: Int) async {
-        while pendingCount < count { await Task.yield() }
+    /// 有上限：等不到就回傳 false，讓測試接著在後面的檢查失敗，而不是永遠卡住。
+    @discardableResult
+    public func waitForPendingCount(_ count: Int, maxYields: Int = 200_000) async -> Bool {
+        for _ in 0..<maxYields {
+            if pendingCount >= count { return true }
+            await Task.yield()
+        }
+        return pendingCount >= count
     }
 }

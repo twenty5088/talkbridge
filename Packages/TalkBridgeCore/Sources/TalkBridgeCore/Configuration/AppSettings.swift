@@ -24,6 +24,8 @@ public struct AppSettings: Equatable, Sendable, Codable {
     public var mode: ConversationMode = .manual
     /// 說完停頓多久才開始翻譯（秒）。Kevin 2026-11-07：預設 2 秒，可在設定調整。
     public var pauseSeconds: Double = 2.0
+    /// 使用者自己挑的聲音：語音語言代碼（例如 "en-US"）→ 聲音 identifier。沒有＝自動（品質最好）。
+    public var voiceIdentifiers: [String: String] = [:]
 
     public init() {}
 

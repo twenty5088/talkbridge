@@ -222,7 +222,7 @@ final class ScenarioFixTests: XCTestCase {
         XCTAssertNil(h.vm.microphoneHint)
         h.vm.partnerButtonTapped()
         await waitUntil("listening partner") { h.vm.state == .listeningToPartner }
-        XCTAssertEqual(h.vm.microphoneHint, "現在可以說話：English")
+        XCTAssertEqual(h.vm.microphoneHint, "現在可以說話：英文")
         h.vm.partnerButtonTapped()
         await waitUntil("translating") { h.vm.state == .translatingToChinese }
         XCTAssertEqual(h.vm.microphoneHint, "請稍等，麥克風已關閉")

@@ -33,10 +33,11 @@ final class LocaleMappingTests: XCTestCase {
     }
 
     func testDisplayNames() {
-        XCTAssertEqual(PartnerLanguage.english.displayName, "English")
-        XCTAssertEqual(PartnerLanguage.indonesian.displayName, "Bahasa Indonesia")
-        XCTAssertEqual(PartnerLanguage.thai.displayName, "ไทย")
-        XCTAssertEqual(PartnerLanguage.japanese.displayName, "日本語")
-        XCTAssertEqual(PartnerLanguage.korean.displayName, "한국어")
+        // Kevin 2026-11-08：選單改用中文顯示（太太操作）。
+        XCTAssertEqual(PartnerLanguage.english.displayName, "英文")
+        XCTAssertEqual(PartnerLanguage.indonesian.displayName, "印尼文")
+        XCTAssertEqual(PartnerLanguage.thai.displayName, "泰文")
+        XCTAssertEqual(PartnerLanguage.japanese.displayName, "日文")
+        XCTAssertEqual(PartnerLanguage.korean.displayName, "韓文")
     }
 }

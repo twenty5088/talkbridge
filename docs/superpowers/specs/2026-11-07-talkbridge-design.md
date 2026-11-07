@@ -1,7 +1,7 @@
 # TalkBridge 設計文件
 
 日期：2026-11-07
-狀態：待 Kevin 核准
+狀態：待 Kevin 核准（審查員問題已處理，2026-11-07）
 完整原始需求：`docs/original-requirements.md`（以下稱「原需求」，章節編號沿用）。
 本文件只寫**原需求之外的決定、覆寫與補充**；沒提到的部分一律照原需求做。
 
@@ -32,7 +32,7 @@ Kevin 的太太在面對面場合（對方說英文、印尼文、泰文、日�
 | 項目 | 做法 |
 |---|---|
 | 專案位置 | `C:\Users\Kevin\talkbridge`（獨立資料夾，不動錄音日誌） |
-| 原始碼管理 | git，新建 GitHub **私人** repo `twenty5088/talkbridge`；推送方式比照 voicejournal（部署金鑰或 `git credential fill` 取 token；🔴 GCM 在 Claude 環境跑不起來，別試） |
+| 原始碼管理 | git，新建 GitHub **公開** repo `twenty5088/talkbridge`【Kevin 決定：公開 repo 的雲端 Mac 不限時間；私人 repo 免費額度每月約 200 分鐘只夠約 13 輪】。🔴 因為公開，repo 內不得放任何密碼、金鑰、Apple ID、個資或真實對話內容；測試資料只用人工示例句；推送方式比照 voicejournal（部署金鑰或 `git credential fill` 取 token；🔴 GCM 在 Claude 環境跑不起來，別試） |
 | 專案檔 | XcodeGen `project.yml` 產生 `.xcodeproj`（`.xcodeproj` 不進 git） |
 | 編譯與測試 | GitHub Actions 雲端 Mac：產生專案 → 模擬器 build → 單元測試 → UI 測試 → 乾淨建置 → 未簽章 Release ipa，ipa 與 `.xcresult`／測試摘要都當 artifact 上傳 |
 | 「實際執行過的命令」 | 原需求要求本機執行的 `xcodebuild -version`、`swift --version`、`xcrun simctl list` 等，全部改在 Actions 上執行並印進 log；Claude 透過 GitHub API 讀 log／artifact 判讀結果，失敗就修完重推 |
@@ -45,7 +45,7 @@ Kevin 的太太在面對面場合（對方說英文、印尼文、泰文、日�
 
 ## 3. 目標裝置
 
-- 【Kevin 決定】App 裝在**太太的 iPhone**，型號與 Kevin 相同，**iOS 26.6.2**。
+- 【Kevin 決定】App 裝在**太太的 iPhone**，型號與 Kevin 相同，**iPhone 17 系列**，**iOS 26.6.2**。
 - 部署目標維持原需求的 **iOS 18.0**；iOS 26 的新 API 以 `if #available(iOS 26, *)` 使用，iOS 18–25 走舊寫法。實機只會驗證到 iOS 26 那條路，iOS 18 路徑只保證能編譯並有單元測試。【Claude 判斷】
 
 ## 4. 音訊設計（覆寫原需求 §一第 1 項、§四、§六第 6 項、§十二第 6 項）
@@ -88,7 +88,7 @@ Kevin 的太太在面對面場合（對方說英文、印尼文、泰文、日�
 
 ### 5.2 語音辨識
 - 主要用 `SFSpeechRecognizer`（iOS 18 起可用，五種語言＋zh-TW 都有辨識器）。
-- 偏好裝置端辨識：該語言 `supportsOnDeviceRecognition` 為真時設 `requiresOnDeviceRecognition = true`；為假時**允許 Apple 伺服器辨識**，但 UI 明確標示「此語言的語音辨識需要網路（由 Apple 處理）」。這不是第三方雲端服務，符合原需求「盡可能留在裝置端」。【Claude 判斷——Kevin 若要「只准裝置端、不支援就停用」可推翻】
+- 偏好裝置端辨識：該語言 `supportsOnDeviceRecognition` 為真時設 `requiresOnDeviceRecognition = true`；為假時**允許 Apple 伺服器辨識**，但 UI 明確標示「此語言的語音辨識需要網路（由 Apple 處理）」。這不是第三方雲端服務，符合原需求「盡可能留在裝置端」。【Kevin 決定】
 - iOS 26 的新語音辨識 API（SpeechAnalyzer / SpeechTranscriber）第一版**不採用**，列入下一版建議；理由：多一條路徑要維護，且五種語言的支援度需另外查證。【Claude 判斷】
 
 ### 5.3 語音合成
@@ -103,12 +103,17 @@ Kevin 的太太在面對面場合（對方說英文、印尼文、泰文、日�
 - 原需求的「先確認再播」保留為設定選項（預設關閉）。【Claude 判斷】
 - 播放、停止、重播、重新錄音、編輯翻譯文字（原需求 §五 B-5）照做。
 
+### 6.1b 手動模式：一句話怎麼結束
+
+【Kevin 決定】手動模式下按一下「對方說話」或「我說中文」開始聆聽，**停頓 1.2 秒自動結束**這一句；想提早結束可以再按一次同一個按鈕。最長 30 秒照原需求。手動與自動輪流共用同一套「一句結束」邏輯，差別只在說完後是否自動換人。
+
 ### 6.2 模式 C 自動輪流：固定交替
 
 【Kevin 決定】自動輪流時，**固定交替**：對方說完換太太、太太說完換對方，畫面大字顯示「現在輪到：對方／我」。不做自動判斷語言。
 - 第一句由使用者按哪個大按鈕決定從誰開始。
 - 停頓 1.2 秒、最長 30 秒照原需求；另加「輪到某人後若一直沒說話」的等待上限（預設 15 秒）後回到待機，避免麥克風無限開著。【Claude 判斷】
 - 任何時候按另一個大按鈕都可以搶回順序；緊急停止回到 idle。
+- 太太那一輪的播放沿用 §6.1 的設定：預設倒數 2 秒自動播完再換對方；若開了「先確認再播」，自動輪流會停在等待確認，畫面顯示「等你按播放」，按下播放後才換對方（等待確認期間不計入 15 秒上限）。【Claude 判斷】
 
 ### 6.3 「給對方看」大字畫面（新增）
 

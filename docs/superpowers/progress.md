@@ -5,9 +5,9 @@
 - status: IN_PROGRESS
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-07T09:33:55+08:00
+- last_active: 2026-11-07T09:35:12+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
-- current: Task 8 Step 2（RED）
+- current: Task 9 Step 2（RED）
 - blocked_reason: （無）
 
 ## 任務清單
@@ -50,3 +50,6 @@
 - Task 7: complete（commit 73cf31b；core-tests #16 57/57 pass）。模式 B 在 Task 7 先停在 readyToPlay(nil)，Task 8 補完。
 - Task 7 iOS 驗證：ios #16 Core 57/57、UI 1/1、warnings 0
 - Task 8: 假語音服務的 isSpeaking 改由 continuation 判斷（被停止的上一句晚收尾會誤清旗標）；正式版 AppleSpeechSynthesisService 也要注意同樣的競態。
+- Task 8: complete（commits cf67b7d..89af8f8；core-tests #20 71/71 pass）
+- Ruling: Task 9 的「stopAll 時 log 有 cancel 與 synthesis.stop」拆成三個測試（聆聽中→cancel、翻譯中→結果丟棄、播放中→synthesis.stop）— 翻譯中本來就沒有麥克風與播放可停 — 若錯：無。
+- Ruling: FakeTranslationService 加 holdTranslations/releaseTranslations — 要測翻譯途中被停止 — 若錯：無。

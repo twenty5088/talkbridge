@@ -34,6 +34,7 @@ struct Harness {
          readiness: TranslationReadiness = .installed,
          prepareError: (any Error & Sendable)? = nil,
          translateError: (any Error & Sendable)? = nil,
+         holdTranslations: Bool = false,
          voiceMatch: VoiceMatch = .exact,
          route: AudioRouteInfo = AudioRouteInfo(kind: .speaker, portName: "Speaker"),
          speakerOverrideResult: AudioRouteInfo? = nil,
@@ -47,7 +48,7 @@ struct Harness {
                                                    scriptsByLocale: scriptsByLocale, error: recognitionError,
                                                    sendsFinal: sendsFinal)
         translation = FakeTranslationService(log: log, readiness: readiness, prepareError: prepareError,
-                                             translateError: translateError)
+                                             translateError: translateError, holdTranslations: holdTranslations)
         synthesis = FakeSpeechSynthesisService(log: log, match: voiceMatch)
         audio = FakeAudioSessionService(log: log, route: route, speakerOverrideResult: speakerOverrideResult)
         permissions = FakePermissionService(log: log, snapshot: permissionSnapshot, afterRequest: afterRequest)

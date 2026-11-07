@@ -29,8 +29,7 @@ final class AppleAudioSessionService: AudioSessionService {
     func activate() throws {
         do {
             if !configured {
-                try session.setCategory(.playAndRecord, mode: .default,
-                                        options: [.allowBluetoothA2DP, .defaultToSpeaker])
+                try Self.configureCategory(session)
                 configured = true
             }
             try session.setActive(true)
@@ -49,6 +48,12 @@ final class AppleAudioSessionService: AudioSessionService {
             throw AppError.audioSessionFailed
         }
         return currentRoute
+    }
+
+    /// 對話與設定頁試聽共用同一組設定（靜音開關不會讓它沒聲音；刻意不開 HFP）。
+    static func configureCategory(_ session: AVAudioSession) throws {
+        try session.setCategory(.playAndRecord, mode: .default,
+                                options: [.allowBluetoothA2DP, .defaultToSpeaker])
     }
 
     func deactivate() {

@@ -40,4 +40,6 @@ public enum AccessibilityID {
     public static func cardTranslation(_ index: Int) -> String { "card.\(index).translation" }
     public static func cardReplay(_ index: Int) -> String { "card.\(index).replay" }
     public static func language(_ language: PartnerLanguage) -> String { "language.\(language.rawValue)" }
+    public static func voiceRow(_ languageID: String) -> String { "voiceRow.\(languageID)" }
+    public static let voiceAutomatic = "voiceAutomatic"
 }

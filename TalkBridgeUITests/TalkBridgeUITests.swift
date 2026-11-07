@@ -275,4 +275,17 @@ final class TalkBridgeUITests: XCTestCase {
         waitForStatus(app, "準備播放給對方", timeout: 20)
         XCTAssertFalse(element(app, AccessibilityID.queuedHint).exists, "用掉後不再顯示")
     }
+
+    // Kevin 2026-11-08：設定裡可以替每個語言挑聲音，預設是「自動（品質最好）」
+    @MainActor
+    func testVoiceSettingDefaultsToAutomaticForEachLanguage() {
+        let app = launch()
+        app.buttons[AccessibilityID.settingsButton].tap()
+        let english = element(app, AccessibilityID.voiceRow("en-US"))
+        XCTAssertTrue(english.waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, AccessibilityID.voiceRow("zh-TW")).exists, "中文也要能選聲音")
+        XCTAssertTrue(english.label.contains("自動"), "預設是自動，目前是「\(english.label)」")
+        english.tap()
+        XCTAssertTrue(element(app, AccessibilityID.voiceAutomatic).waitForExistence(timeout: 5))
+    }
 }

@@ -7,6 +7,8 @@ import TalkBridgeCore
 @MainActor
 final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
+    /// 使用者在設定頁挑的聲音（語音語言代碼 → identifier）；nil＝自動。
+    var preferredVoiceIdentifier: @MainActor (String) -> String? = { _ in nil }
     private var current: (id: ObjectIdentifier, continuation: CheckedContinuation<Void, Error>)?
 
     override init() {
@@ -15,7 +17,7 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
     }
 
     func voiceMatch(forLanguageID languageID: String) -> VoiceMatch {
-        guard let voice = Self.bestVoice(for: languageID) else { return .none }
+        guard let voice = bestVoice(for: languageID) else { return .none }
         return voice.language == languageID ? .exact : .fallback(actualLanguageID: voice.language)
     }
 
@@ -23,7 +25,7 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
         try Task.checkCancellation()
         finishCurrent(with: .failure(CancellationError()))
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = Self.bestVoice(for: languageID)
+        utterance.voice = bestVoice(for: languageID)
         let id = ObjectIdentifier(utterance)
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -61,19 +63,24 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
         current.continuation.resume(with: result)
     }
 
-    /// 挑品質最好的語音：使用者在「設定 → 輔助使用 → 閱讀與朗讀 → 聲音」下載的高品質／加強版會優先使用；
+    /// 使用者挑的聲音還在就用它；否則挑品質最好的（高品質／加強版優先），
     /// 找不到該地區時改用同語言其他地區（例如 en-US 找不到時用 en-GB）。規則在 TalkBridgeCore 的 VoiceSelector。
-    private static func bestVoice(for languageID: String) -> AVSpeechSynthesisVoice? {
+    private func bestVoice(for languageID: String) -> AVSpeechSynthesisVoice? {
         let voices = AVSpeechSynthesisVoice.speechVoices()
-        let candidates = voices.map { voice -> VoiceCandidate in
-            let quality: VoiceQuality = switch voice.quality {
-            case .premium: .premium
-            case .enhanced: .enhanced
-            default: .standard
-            }
-            return VoiceCandidate(language: voice.language, quality: quality,
-                                  isNovelty: voice.voiceTraits.contains(.isNoveltyVoice))
+        return VoiceSelector.bestIndex(for: languageID, in: voices.map(\.candidate),
+                                       preferredIdentifier: preferredVoiceIdentifier(languageID)).map { voices[$0] }
+    }
+}
+
+extension AVSpeechSynthesisVoice {
+    /// 轉成核心挑選規則用的資料。
+    var candidate: VoiceCandidate {
+        let quality: VoiceQuality = switch self.quality {
+        case .premium: .premium
+        case .enhanced: .enhanced
+        default: .standard
         }
-        return VoiceSelector.bestIndex(for: languageID, in: candidates).map { voices[$0] }
+        return VoiceCandidate(identifier: identifier, name: name, language: language, quality: quality,
+                              isNovelty: voiceTraits.contains(.isNoveltyVoice))
     }
 }

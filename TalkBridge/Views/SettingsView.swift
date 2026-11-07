@@ -3,6 +3,7 @@ import TalkBridgeCore
 
 struct SettingsView: View {
     @Bindable var settings: SettingsViewModel
+    var canPreviewVoice = true
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -17,6 +18,22 @@ struct SettingsView: View {
                     Text("聲音")
                 } footer: {
                     Text("有藍牙耳機時，中文從耳機播給你聽；外語會暫時改從手機喇叭播給對方。若耳機切不過去，畫面會提示，可改用「給對方看」。收音一律使用 iPhone 的麥克風。")
+                }
+
+                Section {
+                    ForEach(VoiceLanguage.all, id: \.languageID) { language in
+                        NavigationLink {
+                            VoicePickerView(language: language, settings: settings, canPreview: canPreviewVoice)
+                        } label: {
+                            LabeledContent(language.title,
+                                           value: VoicePickerView.chosenName(for: language, in: settings.settings))
+                        }
+                        .accessibilityIdentifier(AccessibilityID.voiceRow(language.languageID))
+                    }
+                } header: {
+                    Text("翻譯時用的聲音")
+                } footer: {
+                    Text("想要更自然的聲音：到 iPhone「設定 → 輔助使用 → 閱讀與朗讀 → 聲音」下載名字標「加強版」或「高品質」的聲音，再回來這裡選。")
                 }
 
                 Section {

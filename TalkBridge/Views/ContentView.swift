@@ -34,7 +34,8 @@ struct ContentView: View {
                 }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(settings: environment.settings)
+            // 對話進行中不能試聽聲音：麥克風可能開著，試聽的聲音會被當成有人說話。
+            SettingsView(settings: environment.settings, canPreviewVoice: !conversation.state.isBusy)
         }
         .fullScreenCover(isPresented: $showPartnerDisplay) {
             PartnerDisplayView(text: latestForeignText) { showPartnerDisplay = false }

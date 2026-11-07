@@ -36,10 +36,14 @@ final class AppEnvironment {
         let settings = SettingsViewModel(store: store)
         let translation = AppleTranslationService()
         let logger = Logger(subsystem: "com.twenty5088.talkbridge", category: "conversation")
+        let synthesis = AppleSpeechSynthesisService()
+        synthesis.preferredVoiceIdentifier = { [weak settings] languageID in
+            settings?.settings.voiceIdentifiers[languageID]
+        }
         let conversation = ConversationViewModel(
             recognition: AppleSpeechRecognitionService(),
             translation: translation,
-            synthesis: AppleSpeechSynthesisService(),
+            synthesis: synthesis,
             audio: AppleAudioSessionService(),
             permissions: ApplePermissionService(),
             sleeper: TaskSleeper(),

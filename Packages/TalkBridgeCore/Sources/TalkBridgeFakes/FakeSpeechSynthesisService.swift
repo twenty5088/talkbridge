@@ -11,7 +11,8 @@ public final class FakeSpeechSynthesisService: SpeechSynthesisService {
     private var generation = 0
 
     public var match: VoiceMatch
-    public private(set) var isSpeaking = false
+    /// 有一個 speak 正在等待結束。用 continuation 判斷，避免被停止的上一句晚收尾時誤清旗標。
+    public var isSpeaking: Bool { current != nil }
 
     public init(log: CallLog, match: VoiceMatch = .exact, autoCompleteAfter: Duration? = nil,
                 sleeper: any Sleeper = TaskSleeper()) {
@@ -28,8 +29,6 @@ public final class FakeSpeechSynthesisService: SpeechSynthesisService {
         try Task.checkCancellation()
         generation += 1
         let myGeneration = generation
-        isSpeaking = true
-        defer { isSpeaking = false }
         if let autoCompleteAfter {
             let sleeper = self.sleeper
             Task { @MainActor [weak self] in

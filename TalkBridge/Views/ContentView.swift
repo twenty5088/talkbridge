@@ -1,25 +1,85 @@
 import SwiftUI
 import TalkBridgeCore
 
-/// Task 11 暫時版：只確認服務能組裝、能編譯。完整畫面在 Task 12。
+/// 根畫面：主對話畫面＋設定＋「給對方看」，並掛上唯一的翻譯宿主與音訊事件監聽。
 struct ContentView: View {
     let environment: AppEnvironment
+    @State private var showSettings = false
+    @State private var showPartnerDisplay = false
+
+    private var conversation: ConversationViewModel { environment.conversation }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("TalkBridge")
-                .font(.largeTitle)
-            Text(environment.conversation.state.statusText)
-            Button("對方說話") { environment.conversation.partnerButtonTapped() }
-            Button("我說中文") { environment.conversation.userButtonTapped() }
+        NavigationStack {
+            ConversationView(conversation: conversation, mode: modeBinding)
+                .navigationTitle("TalkBridge")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showPartnerDisplay = true
+                        } label: {
+                            Label("給對方看", systemImage: "rectangle.portrait.rotate")
+                        }
+                        .accessibilityIdentifier(AccessibilityID.partnerDisplayButton)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Label("設定", systemImage: "gearshape")
+                        }
+                        .accessibilityIdentifier(AccessibilityID.settingsButton)
+                    }
+                }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(settings: environment.settings)
+        }
+        .fullScreenCover(isPresented: $showPartnerDisplay) {
+            PartnerDisplayView(text: latestForeignText) { showPartnerDisplay = false }
         }
         .background {
             if let translationService = environment.translationService {
                 TranslationHostView(service: translationService)
             }
         }
+        .modifier(FontScaleModifier(scale: environment.settings.settings.fontScale))
         .task {
-            await environment.conversation.startObservingAudioEvents()
+            await conversation.startObservingAudioEvents()
+        }
+        .onAppear {
+            conversation.settings = environment.settings.settings
+        }
+        .onChange(of: environment.settings.settings) { _, newValue in
+            conversation.settings = newValue
+        }
+    }
+
+    private var modeBinding: Binding<ConversationMode> {
+        Binding(get: { environment.settings.settings.mode },
+                set: { environment.settings.settings.mode = $0 })
+    }
+
+    /// 「給對方看」顯示最新一句外語：待播譯文優先，其次是最後一句給對方的翻譯。
+    private var latestForeignText: String {
+        if case .readyToPlayForPartner = conversation.state, !conversation.editableTranslation.isEmpty {
+            return conversation.editableTranslation
+        }
+        return conversation.entries.last(where: { $0.speaker == .user })?.translation ?? ""
+    }
+}
+
+/// 設定裡的字體大小：標準（1.0）時完全跟隨系統的 Dynamic Type；其他選項才覆寫。
+private struct FontScaleModifier: ViewModifier {
+    let scale: Double
+
+    func body(content: Content) -> some View {
+        switch scale {
+        case ..<0.9: content.dynamicTypeSize(.small)
+        case 1.1..<1.3: content.dynamicTypeSize(.xLarge)
+        case 1.3...: content.dynamicTypeSize(.xxxLarge)
+        default: content
         }
     }
 }

@@ -5,7 +5,7 @@
 - status: DONE
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-08T09:10:41+08:00
+- last_active: 2026-11-08T09:14:19+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: 中文語言名稱＋自動挑最好的聲音＋自己挑聲音完成（ipa 在 dist/）
 - blocked_reason: （無）
@@ -104,3 +104,9 @@
 - 2026-11-08: Ruling: 試聽沿用對話的音訊設定（抽出 AppleAudioSessionService.configureCategory），只在離開選聲音畫面時關掉自己開的工作階段 — 靜音開關下也聽得到、不干擾對話 — 若錯：試聽後別的 App 音樂要手動再播。
 - 2026-11-08: Ruling: 選聲音畫面的 UI 測試與畫面同一次提交（非先 RED）— 核心規則已 TDD，畫面只是接線；UI 測試只驗預設「自動」與畫面可進入 — 若錯：畫面細節靠實機測試第 29 項。
 - 2026-11-08: 品質標籤「加強版」改「增強音質」（與 iOS 聲音設定用詞一致，Kevin 實機看到）；設定頁與 README 註明 Siri 聲音不開放給第三方 App — RED 1 失敗→GREEN。
+- 2026-11-08: 加快說完到出聲（Kevin 核准「全部一起做」）— SpeedTests RED（編譯失敗：缺 TurnTimings／倒數設定／預熱）→GREEN，core 193/193。
+- 2026-11-08: Ruling: 倒數改成設定（0／1／2 秒，預設 1）；原本固定 2 秒是 Kevin 先前決定，這次 Kevin 同意縮短 — 若錯：設定改回 2 秒即可。
+- 2026-11-08: Ruling: 等最終辨識上限 2→1 秒，逾時用畫面上已顯示的文字 — 若錯：最後幾個字偶爾少標點或少一兩字。
+- 2026-11-08: Ruling: iOS 26 起每個已安裝語言對各留一個 TranslationSession(installedSource:target:)，對話開始時先翻一句問候語預熱；未安裝或 iOS 18–25 走原本 translationTask 流程 — 若錯：實機第 30 項翻譯時間沒變短，就是預熱無效。
+- 2026-11-08: Ruling: 聲音預熱用另一個 AVSpeechSynthesizer.write（只產生音訊資料、不播放、不動音訊工作階段）— 若錯：第一句出聲時間沒變短。
+- 2026-11-08: Ruling: 各階段時間直接顯示在狀態區（忙碌時隱藏），只記時間不記內容；測試用 Harness 預設仍倒數 2 秒（countdownFromSettings 才用設定），既有測試不必改 — 若錯：畫面多一行小字，之後可移到設定裡開關。

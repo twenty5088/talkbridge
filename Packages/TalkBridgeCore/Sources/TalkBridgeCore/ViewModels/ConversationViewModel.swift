@@ -43,6 +43,8 @@ public final class ConversationViewModel {
     public var settings: AppSettings
     /// 模式 B 倒數剩餘秒數；nil 表示沒有在倒數。
     public private(set) var countdownRemaining: Int?
+    /// 上一句各階段花的時間（畫面上顯示，用來找出哪一段慢）；只有時間，沒有內容。
+    public private(set) var lastTimings: TurnTimings?
     /// 模式 B 待播的譯文，使用者可以編輯。
     public var editableTranslation = ""
     public private(set) var isEditing = false
@@ -86,6 +88,8 @@ public final class ConversationViewModel {
     @ObservationIgnored private var scheduledSpeaker: Speaker?
     /// 自動輪流連續沒有有效內容（雜音、殘響）的起點；累計超過沒聲音上限就暫停（審查 R5）。
     @ObservationIgnored private var noSpeechStreakStart: Duration?
+    /// 已經先暖好翻譯與聲音的對方語言（換語言就再暖一次）。
+    @ObservationIgnored private var warmedLanguage: PartnerLanguage?
 
     /// 一句話聆聽的結果。
     private struct Heard {
@@ -94,6 +98,8 @@ public final class ConversationViewModel {
         let start: Duration
         /// 第一次聽到文字的時間（沒有部分結果時＝開始聆聽）。
         let speechStart: Duration
+        /// 判定說完到拿到最後文字花的時間。
+        let finishing: Duration
     }
 
     private struct ListeningContext {
@@ -412,6 +418,7 @@ public final class ConversationViewModel {
             return
         }
         guard !Task.isCancelled else { return }
+        warmUpIfNeeded()
 
         switch await recognition.mode(forLocaleID: localeID) {
         case .unavailable:
@@ -486,14 +493,34 @@ public final class ConversationViewModel {
         }
 
         noSpeechStreakStart = nil
-        await deliver(text, direction: direction)
+        await deliver(text, direction: direction, finishing: heard.finishing)
+    }
+
+    /// 對話開始時先把兩個方向的翻譯和兩種聲音準備好，第一句就不用等載入（Kevin 2026-11-08）。
+    private func warmUpIfNeeded() {
+        guard warmedLanguage != partnerLanguage else { return }
+        let language = partnerLanguage
+        warmedLanguage = language
+        let directions: [TranslationDirection] = [.partnerToChinese(language), .chineseToPartner(language)]
+        for direction in directions {
+            synthesis.warmUp(languageID: LocaleMapping.voiceLanguageID(for: direction))
+        }
+        let pairs = directions.map { LocaleMapping.translationPair(for: $0) }.map { ($0.source, $0.target) }
+        let translation = self.translation
+        Task {
+            for (source, target) in pairs {
+                await translation.warmUp(source: source, target: target)
+            }
+        }
     }
 
     /// 翻譯並送出：對方的話翻成中文播放；太太的話翻成外語後倒數播放。
-    private func deliver(_ text: String, direction: TranslationDirection) async {
+    private func deliver(_ text: String, direction: TranslationDirection, finishing: Duration? = nil) async {
         let speaker = direction.speaker
         let pair = LocaleMapping.translationPair(for: direction)
         move(to: speaker == .partner ? .translatingToChinese : .translatingToPartnerLanguage)
+        lastTimings = nil
+        let translationStart = sleeper.now
         let translated: String
         do {
             translated = try await translateWithTimeout(text, source: pair.source, target: pair.target)
@@ -509,6 +536,7 @@ public final class ConversationViewModel {
         }
         guard !Task.isCancelled else { return }
         partialTranscript = ""
+        lastTimings = TurnTimings(finishing: finishing, translation: sleeper.now - translationStart)
 
         switch direction {
         case .partnerToChinese:
@@ -584,6 +612,7 @@ public final class ConversationViewModel {
             await sleepUnlessWoken(for: nextDeadline(for: context, detector: detector) - current)
         }
 
+        let endDecided = sleeper.now
         if reachedMaxDuration {
             notice = "已達單句最長 \(configuration.maxUtteranceDuration.components.seconds) 秒，先翻譯這一段。"
         }
@@ -609,13 +638,15 @@ public final class ConversationViewModel {
         listening = nil
         let speechStart = context.firstChange ?? context.start
         if let finalText = context.finalText {
-            return Heard(text: finalText, start: context.start, speechStart: speechStart)
+            return Heard(text: finalText, start: context.start, speechStart: speechStart,
+                         finishing: sleeper.now - endDecided)
         }
         if let error = context.streamError, context.lastPartial.isEmpty {
             fail(Self.recognitionError(error, localeID: localeID))
             return nil
         }
-        return Heard(text: context.lastPartial, start: context.start, speechStart: speechStart)
+        return Heard(text: context.lastPartial, start: context.start, speechStart: speechStart,
+                     finishing: sleeper.now - endDecided)
     }
 
     private func nextDeadline(for context: ListeningContext, detector: UtteranceEndDetector) -> Duration {
@@ -700,7 +731,15 @@ public final class ConversationViewModel {
             move(to: .readyToPlayForPartner(countdown: nil))
             return
         }
-        var remaining = configuration.playbackCountdown
+        var remaining = configuration.playbackCountdown ?? settings.playbackCountdownSeconds
+        if remaining <= 0 {
+            // 設定「不倒數」：翻好馬上播（經過待播狀態，狀態轉換規則不變）。
+            countdownRemaining = nil
+            move(to: .readyToPlayForPartner(countdown: nil))
+            await playPending()
+            return
+        }
+        let countdownStart = sleeper.now
         while remaining > 0 {
             countdownRemaining = remaining
             move(to: .readyToPlayForPartner(countdown: remaining))
@@ -713,6 +752,7 @@ public final class ConversationViewModel {
             remaining -= 1
         }
         countdownRemaining = nil
+        lastTimings?.countdown = sleeper.now - countdownStart
         await playPending()
     }
 
@@ -763,8 +803,14 @@ public final class ConversationViewModel {
         let overridden = overrideOutputIfNeeded(for: direction)
         defer { if overridden { restoreOutput() } }
         move(to: speakingState)
+        // 只記這一句第一次播放的出聲時間；重播不覆蓋。
+        let measuresVoiceStart = lastTimings != nil && lastTimings?.voiceStart == nil
+        let speakStart = sleeper.now
         do {
-            try await synthesis.speak(text, languageID: languageID)
+            try await synthesis.speak(text, languageID: languageID) { [weak self] in
+                guard let self, measuresVoiceStart, self.lastTimings?.voiceStart == nil else { return }
+                self.lastTimings?.voiceStart = self.sleeper.now - speakStart
+            }
         } catch is CancellationError {
             // 被停止或取消：下面依是否被取消決定要不要收尾。
         } catch {

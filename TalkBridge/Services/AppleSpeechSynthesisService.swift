@@ -7,9 +7,13 @@ import TalkBridgeCore
 @MainActor
 final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
+    /// 只用來預先載入聲音：把一句話「寫成音訊資料」而不播放，所以不會出聲，也不動音訊工作階段。
+    private let warmUpSynthesizer = AVSpeechSynthesizer()
+    private var warmedVoiceIdentifiers: Set<String> = []
     /// 使用者在設定頁挑的聲音（語音語言代碼 → identifier）；nil＝自動。
     var preferredVoiceIdentifier: @MainActor (String) -> String? = { _ in nil }
-    private var current: (id: ObjectIdentifier, continuation: CheckedContinuation<Void, Error>)?
+    private var current: (id: ObjectIdentifier, continuation: CheckedContinuation<Void, Error>,
+                          onStart: @MainActor () -> Void)?
 
     override init() {
         super.init()
@@ -22,6 +26,10 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
     }
 
     func speak(_ text: String, languageID: String) async throws {
+        try await speak(text, languageID: languageID, onStart: {})
+    }
+
+    func speak(_ text: String, languageID: String, onStart: @escaping @MainActor () -> Void) async throws {
         try Task.checkCancellation()
         finishCurrent(with: .failure(CancellationError()))
         let utterance = AVSpeechUtterance(string: text)
@@ -29,7 +37,7 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
         let id = ObjectIdentifier(utterance)
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                current = (id, continuation)
+                current = (id, continuation, onStart)
                 synthesizer.speak(utterance)
             }
         } onCancel: {
@@ -37,9 +45,27 @@ final class AppleSpeechSynthesisService: NSObject, SpeechSynthesisService, AVSpe
         }
     }
 
+    /// 對話開始時先載入要用的聲音（高品質聲音第一次載入較慢）。每個聲音只做一次。
+    func warmUp(languageID: String) {
+        guard let voice = bestVoice(for: languageID),
+              warmedVoiceIdentifiers.insert(voice.identifier).inserted else { return }
+        let sample = VoiceLanguage.all.first { $0.languageID == languageID }?.sampleText ?? "Hello"
+        let utterance = AVSpeechUtterance(string: sample)
+        utterance.voice = voice
+        warmUpSynthesizer.write(utterance) { _ in }
+    }
+
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
         finishCurrent(with: .failure(CancellationError()))
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        let id = ObjectIdentifier(utterance)
+        Task { @MainActor [weak self] in
+            guard let current = self?.current, current.id == id else { return }
+            current.onStart()
+        }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {

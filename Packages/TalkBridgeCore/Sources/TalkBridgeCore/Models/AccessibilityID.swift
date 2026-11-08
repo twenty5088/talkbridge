@@ -28,6 +28,8 @@ public enum AccessibilityID {
     public static let settingsButton = "settingsButton"
     public static let settingsDoneButton = "settingsDoneButton"
     public static let pausePicker = "pausePicker"
+    public static let countdownPicker = "countdownPicker"
+    public static let timingsText = "timingsText"
     public static let microphoneHint = "microphoneHint"
     public static let queuedHint = "queuedHint"
     public static let permissionView = "permissionView"

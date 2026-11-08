@@ -11,6 +11,8 @@ public final class FakeSpeechSynthesisService: SpeechSynthesisService {
     private var generation = 0
 
     public var match: VoiceMatch
+    /// 被要求先載入的聲音語言（不寫進 CallLog）。
+    public private(set) var warmedLanguages: [String] = []
     /// 有一個 speak 正在等待結束。用 continuation 判斷，避免被停止的上一句晚收尾時誤清旗標。
     public var isSpeaking: Bool { current != nil }
 
@@ -44,6 +46,10 @@ public final class FakeSpeechSynthesisService: SpeechSynthesisService {
         } onCancel: {
             Task { @MainActor [weak self] in self?.resume(with: .failure(CancellationError())) }
         }
+    }
+
+    public func warmUp(languageID: String) {
+        warmedLanguages.append(languageID)
     }
 
     public func stop() {

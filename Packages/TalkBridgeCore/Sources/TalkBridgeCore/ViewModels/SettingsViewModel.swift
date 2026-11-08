@@ -28,6 +28,8 @@ public final class SettingsViewModel {
     public static let fontScaleOptions: [Double] = [0.85, 1.0, 1.2, 1.5]
     /// 「說完停頓多久才翻譯」的選項（秒）。
     public static let pauseOptions: [Double] = [1.2, 1.5, 2.0, 2.5, 3.0, 4.0]
+    /// 「翻好後倒數幾秒才播」的選項（秒）；0＝翻好馬上播。
+    public static let countdownOptions: [Int] = [0, 1, 2]
 
     @ObservationIgnored private let store: any SettingsStore
 

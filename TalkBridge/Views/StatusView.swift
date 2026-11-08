@@ -45,6 +45,12 @@ struct StatusView: View {
                     .accessibilityElement(children: .combine)   // 圖示＋文字合成一個元素
                     .accessibilityIdentifier(AccessibilityID.noticeView)
             }
+            if let timings = conversation.lastTimings, !conversation.state.isBusy {
+                Text("上一句花的時間：\(timings.summary)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.timingsText)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)

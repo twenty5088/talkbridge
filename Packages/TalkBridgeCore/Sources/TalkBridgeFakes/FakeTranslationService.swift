@@ -11,6 +11,7 @@ public final class FakeTranslationService: TranslationService, Sendable {
         var holdTranslations: Bool
         var translateErrorOnce: Bool
         var held: [CheckedContinuation<Void, Never>] = []
+        var warmed: [String] = []
     }
 
     private let log: CallLog
@@ -37,6 +38,13 @@ public final class FakeTranslationService: TranslationService, Sendable {
             return held
         }
         for continuation in held { continuation.resume() }
+    }
+
+    /// 被要求先暖好的語言對，例如 "en->zh-Hant-TW"（不寫進 CallLog，不影響既有的呼叫順序測試）。
+    public var warmedPairs: [String] { state.withLock { $0.warmed } }
+
+    public func warmUp(source: String, target: String) async {
+        state.withLock { $0.warmed.append("\(source)->\(target)") }
     }
 
     public func readiness(source: String, target: String) async -> TranslationReadiness {

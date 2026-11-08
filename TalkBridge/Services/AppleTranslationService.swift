@@ -20,7 +20,7 @@ struct TranslationSessionBox: @unchecked Sendable {
 @MainActor
 @Observable
 final class AppleTranslationService: TranslationService {
-    struct Pair: Equatable, Sendable {
+    struct Pair: Hashable, Sendable {
         let source: String
         let target: String
     }
@@ -41,6 +41,10 @@ final class AppleTranslationService: TranslationService {
 
     @ObservationIgnored private var jobs: [Job] = []
     @ObservationIgnored private var configuredPair: Pair?
+    /// iOS 26 起：每個已安裝的語言對各留一個一直開著的翻譯工作，不用每句重新載入模型（Kevin 2026-11-08）。
+    @ObservationIgnored private var readySessions: [Pair: TranslationSessionBox] = [:]
+    /// 正在預熱的語言對；真的翻譯前先等它做完，避免同一個翻譯工作同時被用兩次。
+    @ObservationIgnored private var warmUps: [Pair: Task<Void, Never>] = [:]
 
     nonisolated func readiness(source: String, target: String) async -> TranslationReadiness {
         let status = await LanguageAvailability().status(from: Locale.Language(identifier: source),
@@ -58,7 +62,65 @@ final class AppleTranslationService: TranslationService {
     }
 
     nonisolated func translate(_ text: String, source: String, target: String) async throws -> String {
-        try await enqueue(.translate(text), pair: Pair(source: source, target: target))
+        let pair = Pair(source: source, target: target)
+        if #available(iOS 26.0, *), let box = await readySession(for: pair) {
+            do {
+                return try await box.session.translate(text).targetText
+            } catch {
+                if error is CancellationError || Task.isCancelled { throw CancellationError() }
+                await dropSession(for: pair)   // 下次重新建立；模型被刪掉時會改走下載流程
+                throw AppError.translationFailed
+            }
+        }
+        return try await enqueue(.translate(text), pair: pair)
+    }
+
+    /// 對話開始時呼叫：先翻一個短句，讓模型載入記憶體。沒安裝的語言對不做事。
+    nonisolated func warmUp(source: String, target: String) async {
+        guard #available(iOS 26.0, *) else { return }
+        await startWarmUp(Pair(source: source, target: target))?.value
+    }
+
+    @available(iOS 26.0, *)
+    private func startWarmUp(_ pair: Pair) async -> Task<Void, Never>? {
+        if let running = warmUps[pair] { return running }
+        guard let box = await session(for: pair) else { return nil }
+        if let running = warmUps[pair] { return running }
+        let text = Self.warmUpText(source: pair.source)
+        let task = Task.detached { _ = try? await box.session.translate(text) }
+        warmUps[pair] = task
+        return task
+    }
+
+    @available(iOS 26.0, *)
+    private func readySession(for pair: Pair) async -> TranslationSessionBox? {
+        if let running = warmUps[pair] { await running.value }
+        return await session(for: pair)
+    }
+
+    /// 已安裝的語言對才建立（不需要畫面的 iOS 26 寫法）；沒安裝的交給原本的 translationTask 流程處理下載。
+    @available(iOS 26.0, *)
+    private func session(for pair: Pair) async -> TranslationSessionBox? {
+        if let box = readySessions[pair] { return box }
+        guard await readiness(source: pair.source, target: pair.target) == .installed else { return nil }
+        if let box = readySessions[pair] { return box }
+        let box = TranslationSessionBox(session: TranslationSession(
+            installedSource: Locale.Language(identifier: pair.source),
+            target: Locale.Language(identifier: pair.target)))
+        readySessions[pair] = box
+        return box
+    }
+
+    private func dropSession(for pair: Pair) {
+        readySessions[pair] = nil
+        warmUps[pair] = nil
+    }
+
+    /// 用來源語言的一句問候語預熱（中文用中文、英文用英文…）。
+    private nonisolated static func warmUpText(source: String) -> String {
+        let base = source.split(separator: "-").first.map(String.init) ?? source
+        return VoiceLanguage.all.first { $0.languageID.split(separator: "-").first.map(String.init) == base }?
+            .sampleText ?? "Hello"
     }
 
     private func enqueue(_ kind: Job.Kind, pair: Pair) async throws -> String {

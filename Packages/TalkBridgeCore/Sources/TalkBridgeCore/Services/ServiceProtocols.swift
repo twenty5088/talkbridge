@@ -35,6 +35,12 @@ public protocol TranslationService: AnyObject, Sendable {
     /// 請系統下載語言資料。使用者拒絕或取消時 throw AppError.modelDownloadCancelled。
     func prepare(source: String, target: String) async throws
     func translate(_ text: String, source: String, target: String) async throws -> String
+    /// 先把這個語言對的翻譯準備好（載入模型），讓第一句不用等。只對已安裝的語言對有作用，失敗也不報錯。
+    func warmUp(source: String, target: String) async
+}
+
+public extension TranslationService {
+    func warmUp(source: String, target: String) async {}
 }
 
 public enum VoiceMatch: Sendable, Equatable {
@@ -49,7 +55,20 @@ public protocol SpeechSynthesisService: AnyObject {
     func voiceMatch(forLanguageID languageID: String) -> VoiceMatch
     /// 播完才 return；stop() 或 Task 取消時 throw CancellationError。
     func speak(_ text: String, languageID: String) async throws
+    /// 同上；真的開始出聲時呼叫 onStart（用來計時）。
+    func speak(_ text: String, languageID: String, onStart: @escaping @MainActor () -> Void) async throws
     func stop()
+    /// 先把這個語言要用的聲音載入，不發出聲音。
+    func warmUp(languageID: String)
+}
+
+public extension SpeechSynthesisService {
+    func speak(_ text: String, languageID: String, onStart: @escaping @MainActor () -> Void) async throws {
+        onStart()
+        try await speak(text, languageID: languageID)
+    }
+
+    func warmUp(languageID: String) {}
 }
 
 public enum OutputTarget: Sendable {

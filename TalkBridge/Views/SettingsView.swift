@@ -49,9 +49,20 @@ struct SettingsView: View {
                     Text("說話停頓超過這個時間，就當作一句話說完、開始翻譯。常被切斷就調長一點；想馬上翻譯，可以再按一次按鈕。")
                 }
 
-                Section("播放給對方") {
+                Section {
                     Toggle("先確認再播放（不倒數）", isOn: $settings.settings.confirmBeforePlay)
+                    Picker("翻好後倒數幾秒才播", selection: $settings.settings.playbackCountdownSeconds) {
+                        ForEach(SettingsViewModel.countdownOptions, id: \.self) { seconds in
+                            Text(Self.countdownText(seconds)).tag(seconds)
+                        }
+                    }
+                    .disabled(settings.settings.confirmBeforePlay)
+                    .accessibilityIdentifier(AccessibilityID.countdownPicker)
                     Toggle("對方說完後繼續聆聽對方", isOn: $settings.settings.continueListeningAfterPartner)
+                } header: {
+                    Text("播放給對方")
+                } footer: {
+                    Text("倒數期間可以按「取消倒數」改成自己按播放；選「不倒數」就翻好馬上播。")
                 }
 
                 Section("字體大小") {
@@ -96,6 +107,11 @@ struct SettingsView: View {
     private static func pauseText(_ seconds: Double) -> String {
         let text = seconds == seconds.rounded() ? String(Int(seconds)) : String(seconds)
         return seconds == AppSettings().pauseSeconds ? "\(text) 秒（預設）" : "\(text) 秒"
+    }
+
+    private static func countdownText(_ seconds: Int) -> String {
+        let text = seconds == 0 ? "不倒數（馬上播）" : "\(seconds) 秒"
+        return seconds == AppSettings().playbackCountdownSeconds ? "\(text)（預設）" : text
     }
 
     private static var versionText: String {

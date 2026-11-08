@@ -24,6 +24,18 @@ struct ContentView: View {
                         .accessibilityIdentifier(AccessibilityID.partnerDisplayButton)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
+                        // 語音輸出總開關（Kevin 2026-11-08）：關掉＝只看文字。
+                        let speechOn = environment.settings.settings.speechOutputEnabled
+                        Button {
+                            environment.settings.settings.speechOutputEnabled.toggle()
+                            if speechOn { conversation.stopPlayback() }   // 正在唸的那句也停掉
+                        } label: {
+                            Label(speechOn ? "聲音開著" : "聲音關了",
+                                  systemImage: speechOn ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                        }
+                        .accessibilityIdentifier(AccessibilityID.speechToggleButton)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             showSettings = true
                         } label: {

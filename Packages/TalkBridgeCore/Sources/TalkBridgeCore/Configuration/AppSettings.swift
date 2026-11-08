@@ -28,6 +28,8 @@ public struct AppSettings: Equatable, Sendable, Codable {
     public var voiceIdentifiers: [String: String] = [:]
     /// 中文翻成外語後，倒數幾秒才自動播放。Kevin 2026-11-08：原本固定 2 秒太久，預設 1 秒，可選 0／1／2。
     public var playbackCountdownSeconds = 1
+    /// 翻譯要不要自動唸出來。Kevin 2026-11-08：一個總開關，關掉＝只看文字（手動播放／重播仍會唸）。
+    public var speechOutputEnabled = true
 
     public init() {}
 
@@ -37,7 +39,7 @@ public struct AppSettings: Equatable, Sendable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case outputPreference, confirmBeforePlay, continueListeningAfterPartner, fontScale, mode, pauseSeconds, voiceIdentifiers,
-             playbackCountdownSeconds
+             playbackCountdownSeconds, speechOutputEnabled
     }
 
     /// 舊版存下的設定缺少新欄位時用預設值，不讓整份設定解碼失敗而被重置。
@@ -54,5 +56,6 @@ public struct AppSettings: Equatable, Sendable, Codable {
         voiceIdentifiers = try c.decodeIfPresent([String: String].self, forKey: .voiceIdentifiers) ?? d.voiceIdentifiers
         playbackCountdownSeconds = try c.decodeIfPresent(Int.self, forKey: .playbackCountdownSeconds)
             ?? d.playbackCountdownSeconds
+        speechOutputEnabled = try c.decodeIfPresent(Bool.self, forKey: .speechOutputEnabled) ?? d.speechOutputEnabled
     }
 }

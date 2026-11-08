@@ -50,6 +50,7 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("唸出翻譯", isOn: $settings.settings.speechOutputEnabled)
                     Toggle("先確認再播放（不倒數）", isOn: $settings.settings.confirmBeforePlay)
                     Picker("翻好後倒數幾秒才播", selection: $settings.settings.playbackCountdownSeconds) {
                         ForEach(SettingsViewModel.countdownOptions, id: \.self) { seconds in
@@ -62,7 +63,7 @@ struct SettingsView: View {
                 } header: {
                     Text("播放給對方")
                 } footer: {
-                    Text("倒數期間可以按「取消倒數」改成自己按播放；選「不倒數」就翻好馬上播。")
+                    Text("關掉「唸出翻譯」就只顯示文字（主畫面右上角的喇叭也能切換），按播放或重播仍會唸。倒數期間可以按「取消倒數」改成自己按播放；選「不倒數」就翻好馬上播。")
                 }
 
                 Section("字體大小") {

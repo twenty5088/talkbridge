@@ -202,6 +202,11 @@ public final class ConversationViewModel {
         }
     }
 
+    /// 語音輸出關掉時提醒，免得以為 App 壞了。
+    public var speechOffHint: String? {
+        settings.speechOutputEnabled ? nil : "目前只顯示文字，不唸出來"
+    }
+
     /// 記住的下一句（v2 設計 §2）。
     public var queuedHint: String? {
         switch queuedSpeaker {
@@ -514,6 +519,13 @@ public final class ConversationViewModel {
         }
     }
 
+    /// 語音輸出關掉：只把翻譯留在畫面上，照常換下一位（自動輪流或使用者指定的）。
+    private func showWithoutSpeaking(_ direction: TranslationDirection) {
+        if state != .idle { move(to: .idle) }
+        finishTurn()
+        continueAfterPlayback(direction: direction, continuesConversation: true, resumeSpeaker: nil)
+    }
+
     /// 翻譯並送出：對方的話翻成中文播放；太太的話翻成外語後倒數播放。
     private func deliver(_ text: String, direction: TranslationDirection, finishing: Duration? = nil) async {
         let speaker = direction.speaker
@@ -543,8 +555,14 @@ public final class ConversationViewModel {
             let entry = ConversationEntry(speaker: .partner, direction: direction, original: text,
                                           translation: translated, timestamp: now())
             entries.append(entry)
+            guard settings.speechOutputEnabled else { return showWithoutSpeaking(direction) }
             await speak(translated, direction: direction, as: .speakingChinese)
         case .chineseToPartner:
+            guard settings.speechOutputEnabled else {
+                entries.append(ConversationEntry(speaker: .user, direction: direction, original: text,
+                                                 translation: translated, timestamp: now()))
+                return showWithoutSpeaking(direction)
+            }
             pendingUtterance = (original: text, direction: direction)
             pendingEntryID = nil
             editableTranslation = translated

@@ -23,6 +23,13 @@ struct StatusView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier(AccessibilityID.microphoneHint)
             }
+            if let off = conversation.speechOffHint {
+                Label(off, systemImage: "speaker.slash.fill")
+                    .font(.headline)
+                    .foregroundStyle(.orange)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier(AccessibilityID.speechOffHint)
+            }
             if let queued = conversation.queuedHint {
                 Label(queued, systemImage: "arrow.uturn.right.circle.fill")
                     .font(.headline)

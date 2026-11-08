@@ -291,6 +291,20 @@ final class TalkBridgeUITests: XCTestCase {
         XCTAssertTrue(element(app, AccessibilityID.voiceAutomatic).waitForExistence(timeout: 15))
     }
 
+    // 2026-11-08 語音輸出總開關：關掉只看文字，對話照常；再按一次恢復
+    @MainActor
+    func testSpeechToggleShowsTextOnly() {
+        let app = launch()
+        let toggle = app.buttons[AccessibilityID.speechToggleButton]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        toggle.tap()
+        XCTAssertTrue(element(app, AccessibilityID.speechOffHint).waitForExistence(timeout: 5))
+        runPartnerTurn(app)
+        XCTAssertTrue(element(app, AccessibilityID.cardTranslation(0)).exists, "關掉聲音仍要顯示翻譯")
+        toggle.tap()
+        XCTAssertFalse(element(app, AccessibilityID.speechOffHint).waitForExistence(timeout: 2))
+    }
+
     // 2026-11-08 加快出聲：一句播完後顯示各階段時間；倒數預設 1 秒
     @MainActor
     func testTimingsShownAfterTurnAndCountdownDefaultsToOneSecond() {

@@ -5,7 +5,7 @@
 - status: DONE
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-08T11:36:20+08:00
+- last_active: 2026-11-08T19:15:40+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: 中文語言名稱＋自動挑最好的聲音＋自己挑聲音完成（ipa 在 dist/）
 - blocked_reason: （無）
@@ -113,3 +113,6 @@
 - 2026-11-08: App 圖示改四葉幸運草（Kevin 看過三款預覽選 A：奶油白底綠草），design/icon/make_icon.py 產生 1024 單一尺寸圖示。原本要薰衣草，Kevin 改口要幸運草。
 - 2026-11-08: Ruling: ios #62 testVoiceSettingDefaultsToAutomaticForEachLanguage 換頁 5 秒逾時（#58、#61 同樣程式都通過，圖示不影響該畫面）判定為模擬器慢，等待改 15 秒 — 若錯：再失敗就是真的進不了選聲音畫面，要查。
 - 2026-11-08: Ruling: ios #63 testPlaybackControls 重播後回到「等待中」超過 10 秒（失敗訊息顯示最後已是等待中；#61、#62 同測試通過）判定為模擬器慢，該步等待改 20 秒 — 若錯：重播後回待機真的變慢，實機第 30 項會看到。
+- 2026-11-08: 語音輸出總開關（Kevin 核准設計：只做一個總開關）— SpeechOffTests RED（編譯失敗：缺 speechOutputEnabled／speechOffHint）→GREEN。
+- 2026-11-08: Ruling: 關掉聲音時中文翻外語不倒數、直接記入對話紀錄並換下一位（不進待播）；手動重播仍會唸；正在唸時按關掉會停止這句 — 若錯：想播給對方要按該句卡片的重播。
+- 2026-11-08: Ruling: 開關放主畫面右上角喇叭圖示＋設定「唸出翻譯」，關掉時狀態區顯示橘色「目前只顯示文字，不唸出來」— 太太才不會以為壞了。

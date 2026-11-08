@@ -286,7 +286,8 @@ final class TalkBridgeUITests: XCTestCase {
         XCTAssertTrue(element(app, AccessibilityID.voiceRow("zh-TW")).exists, "中文也要能選聲音")
         XCTAssertTrue(english.label.contains("自動"), "預設是自動，目前是「\(english.label)」")
         english.tap()
-        XCTAssertTrue(element(app, AccessibilityID.voiceAutomatic).waitForExistence(timeout: 5))
+        // 雲端模擬器換頁偶爾很慢（#62 曾 5 秒內沒換完），等久一點。
+        XCTAssertTrue(element(app, AccessibilityID.voiceAutomatic).waitForExistence(timeout: 15))
     }
 
     // 2026-11-08 加快出聲：一句播完後顯示各階段時間；倒數預設 1 秒

@@ -298,7 +298,11 @@ final class TalkBridgeUITests: XCTestCase {
         XCTAssertTrue(timings.waitForExistence(timeout: 10))
         XCTAssertTrue(timings.label.contains("翻譯"), "要顯示翻譯花的時間，目前是「\(timings.label)」")
         app.buttons[AccessibilityID.settingsButton].tap()
-        XCTAssertTrue(element(app, AccessibilityID.countdownPicker).waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, AccessibilityID.pausePicker).waitForExistence(timeout: 10))
+        // 設定清單只建立畫面上看得到的列：倒數選項在下面，要往下捲才會出現。
+        let countdown = element(app, AccessibilityID.countdownPicker)
+        for _ in 0..<4 where !countdown.exists { app.swipeUp() }
+        XCTAssertTrue(countdown.waitForExistence(timeout: 5))
         let defaultText = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@", "1 秒（預設）")).firstMatch
         XCTAssertTrue(defaultText.waitForExistence(timeout: 5), "倒數預設要顯示 1 秒")

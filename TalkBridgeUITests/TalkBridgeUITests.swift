@@ -135,7 +135,8 @@ final class TalkBridgeUITests: XCTestCase {
         waitForStatus(app, "準備播放給對方")
         app.buttons[AccessibilityID.replayButton].tap()
         waitForStatus(app, "正在播放")
-        waitForStatus(app, "等待中")
+        // 雲端模擬器偶爾慢（#63 剛好超過 10 秒才回到等待中），等久一點。
+        waitForStatus(app, "等待中", timeout: 20)
         XCTAssertEqual(element(app, AccessibilityID.cardTranslation(0)).label, "翻譯：\(edited)")
     }
 

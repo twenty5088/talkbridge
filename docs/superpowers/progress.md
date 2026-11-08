@@ -5,7 +5,7 @@
 - status: DONE
   （IN_PROGRESS＝進行中／BLOCKED＝卡住等 Kevin／DONE＝全部完成）
 - execution: Native（依 superpowers:executing-plans 在同一個 session 依序做；最後一位審查員做整體審查）
-- last_active: 2026-11-08T09:14:19+08:00
+- last_active: 2026-11-08T09:40:46+08:00
   （正在工作的 session 每完成一步就更新成現在時間；排程每半小時檢查，看到 25 分鐘內有更新就不插手）
 - current: 中文語言名稱＋自動挑最好的聲音＋自己挑聲音完成（ipa 在 dist/）
 - blocked_reason: （無）
@@ -110,3 +110,4 @@
 - 2026-11-08: Ruling: iOS 26 起每個已安裝語言對各留一個 TranslationSession(installedSource:target:)，對話開始時先翻一句問候語預熱；未安裝或 iOS 18–25 走原本 translationTask 流程 — 若錯：實機第 30 項翻譯時間沒變短，就是預熱無效。
 - 2026-11-08: Ruling: 聲音預熱用另一個 AVSpeechSynthesizer.write（只產生音訊資料、不播放、不動音訊工作階段）— 若錯：第一句出聲時間沒變短。
 - 2026-11-08: Ruling: 各階段時間直接顯示在狀態區（忙碌時隱藏），只記時間不記內容；測試用 Harness 預設仍倒數 2 秒（countdownFromSettings 才用設定），既有測試不必改 — 若錯：畫面多一行小字，之後可移到設定裡開關。
+- 2026-11-08: App 圖示改四葉幸運草（Kevin 看過三款預覽選 A：奶油白底綠草），design/icon/make_icon.py 產生 1024 單一尺寸圖示。原本要薰衣草，Kevin 改口要幸運草。

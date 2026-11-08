@@ -41,7 +41,11 @@ struct Harness {
          permissionSnapshot: PermissionSnapshot = .allGranted,
          afterRequest: PermissionSnapshot? = nil,
          settings: AppSettings = AppSettings(),
-         configuration: ConversationConfiguration = .standard) {
+         configuration: ConversationConfiguration = .standard,
+         countdownFromSettings: Bool = false) {
+        // 既有測試都以倒數 2 秒寫成；要測使用者設定的倒數時傳 countdownFromSettings。
+        var configuration = configuration
+        if !countdownFromSettings, configuration.playbackCountdown == nil { configuration.playbackCountdown = 2 }
         let log = CallLog()
         self.log = log
         recognition = FakeSpeechRecognitionService(log: log, mode: recognitionMode, script: script,
